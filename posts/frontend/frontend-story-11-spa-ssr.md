@@ -1,6 +1,6 @@
 # [발행 11/11·완결] 앱이 된 웹 — SPA·SSR, 그리고 직군의 재정의
 
-- 원본: [01-frontend.md](../01-frontend.md) Part 3 전환④ + Part 4 · 발행: 11번째 (D+30) · 편성: [plan.md](./plan.md)
+- 원본: [01-frontend.md](../../01-frontend.md) Part 3 전환④ + Part 4 · 발행: 11번째 (D+30) · 편성: [plan.md](./plan.md)
 
 | # | 이미지 | 삽입 위치 |
 |---|---|---|

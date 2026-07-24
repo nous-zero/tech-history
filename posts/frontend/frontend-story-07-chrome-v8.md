@@ -1,6 +1,6 @@
 # [발행 7/11] 속도의 전쟁 — Firefox와 Chrome V8
 
-- 원본: [01-frontend.md](../01-frontend.md) Part 2 중 2차 브라우저 전쟁 · 발행: 7번째 (D+18) · 편성: [plan.md](./plan.md)
+- 원본: [01-frontend.md](../../01-frontend.md) Part 2 중 2차 브라우저 전쟁 · 발행: 7번째 (D+18) · 편성: [plan.md](./plan.md)
 
 | # | 이미지 | 삽입 위치 |
 |---|---|---|

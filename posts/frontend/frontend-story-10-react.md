@@ -1,6 +1,6 @@
 # [발행 10/11] 알아서 바뀌는 화면 — React와 빌드
 
-- 원본: [01-frontend.md](../01-frontend.md) Part 3 전환③ · 발행: 10번째 (D+27) · 편성: [plan.md](./plan.md)
+- 원본: [01-frontend.md](../../01-frontend.md) Part 3 전환③ · 발행: 10번째 (D+27) · 편성: [plan.md](./plan.md)
 
 | # | 이미지 | 삽입 위치 |
 |---|---|---|

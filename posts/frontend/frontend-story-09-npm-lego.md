@@ -1,6 +1,6 @@
 # [발행 9/11] 레고와 밀키트 — npm·Bootstrap·Tailwind
 
-- 원본: [01-frontend.md](../01-frontend.md) Part 3 전환② · 발행: 9번째 (D+24) · 편성: [plan.md](./plan.md)
+- 원본: [01-frontend.md](../../01-frontend.md) Part 3 전환② · 발행: 9번째 (D+24) · 편성: [plan.md](./plan.md)
 
 | # | 이미지 | 삽입 위치 |
 |---|---|---|
