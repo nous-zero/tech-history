@@ -1,6 +1,6 @@
 # [발행 3/11] "모호하지만 흥미로움" — Web의 탄생
 
-- 원본: [01-frontend.md](../../01-frontend.md) Part 1 중 Web · 발행: 3번째 (D+6) · 편성: [plan.md](./plan.md)
+- 원본: [01-frontend.md](./01-frontend.md) Part 1 중 Web · 발행: 3번째 (D+6) · 편성: [plan.md](./plan.md)
 
 | # | 이미지 | 삽입 위치 |
 |---|---|---|

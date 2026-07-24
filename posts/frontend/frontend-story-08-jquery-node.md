@@ -1,6 +1,6 @@
 # [발행 8/11] 통역사와 탈옥 — jQuery와 Node.js
 
-- 원본: [01-frontend.md](../../01-frontend.md) Part 3 전환① · 발행: 8번째 (D+21) · 편성: [plan.md](./plan.md)
+- 원본: [01-frontend.md](./01-frontend.md) Part 3 전환① · 발행: 8번째 (D+21) · 편성: [plan.md](./plan.md)
 
 | # | 이미지 | 삽입 위치 |
 |---|---|---|

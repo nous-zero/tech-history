@@ -1,6 +1,6 @@
 # [발행 4/11] 알바생이 연 그림의 시대 — Mosaic과 Netscape
 
-- 원본: [01-frontend.md](../../01-frontend.md) Part 2 중 Mosaic·Netscape · 발행: 4번째 (D+9) · 편성: [plan.md](./plan.md)
+- 원본: [01-frontend.md](./01-frontend.md) Part 2 중 Mosaic·Netscape · 발행: 4번째 (D+9) · 편성: [plan.md](./plan.md)
 
 | # | 이미지 | 삽입 위치 |
 |---|---|---|

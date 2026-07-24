@@ -1,6 +1,6 @@
 # [발행 2/11] 하루 만에 언어를 갈아탄 날 — TCP/IP
 
-- 원본: [01-frontend.md](../../01-frontend.md) Part 1 중 TCP/IP
+- 원본: [01-frontend.md](./01-frontend.md) Part 1 중 TCP/IP
 - 발행 채널: LinkedIn(본문+이미지 3장) + X(축약본+이미지 1장)
 - 발행 순서: 2번째 (D+3) · 전체 편성: [plan.md](./plan.md)
 - 적용 원칙: 대화체 각색 · 비유 실명 태그 · 용어 이미지 · 현대 사례 1개 · [visual-style-guide.md](../visual-style-guide.md)

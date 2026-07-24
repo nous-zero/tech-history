@@ -1,6 +1,6 @@
 # [발행 6/11] 끼워팔기 전쟁 — IE와 CSS
 
-- 원본: [01-frontend.md](../../01-frontend.md) Part 2 중 IE·CSS · 발행: 6번째 (D+15) · 편성: [plan.md](./plan.md)
+- 원본: [01-frontend.md](./01-frontend.md) Part 2 중 IE·CSS · 발행: 6번째 (D+15) · 편성: [plan.md](./plan.md)
 
 | # | 이미지 | 삽입 위치 |
 |---|---|---|

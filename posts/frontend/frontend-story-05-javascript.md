@@ -1,6 +1,6 @@
 # [발행 5/11] 10일 만에 만든 언어 — JavaScript
 
-- 원본: [01-frontend.md](../../01-frontend.md) Part 2 중 JavaScript · 발행: 5번째 (D+12) · 편성: [plan.md](./plan.md)
+- 원본: [01-frontend.md](./01-frontend.md) Part 2 중 JavaScript · 발행: 5번째 (D+12) · 편성: [plan.md](./plan.md)
 
 | # | 이미지 | 삽입 위치 |
 |---|---|---|
