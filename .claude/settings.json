@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": ".*execute_zapier_write_action.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "PY=$(command -v python || command -v python3) && \"$PY\" \"$CLAUDE_PROJECT_DIR/.claude/hooks/verify_upload_gate.py\"",
+            "timeout": 45,
+            "statusMessage": "업로드 게이트: 전송 본문을 원본과 대조 중"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "PY=$(command -v python || command -v python3) && \"$PY\" \"$CLAUDE_PROJECT_DIR/.claude/hooks/verify_git_push.py\"",
+            "timeout": 60,
+            "statusMessage": "푸시 게이트: 원격 최신 여부 확인 중"
+          }
+        ]
+      }
+    ]
+  }
+}
