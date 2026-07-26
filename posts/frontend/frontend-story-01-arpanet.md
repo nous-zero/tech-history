@@ -75,6 +75,8 @@ ARPANET도 그랬습니다. 컴퓨터들이 연결되자마자 새로운 문제�
 
 (대화는 각색입니다. 출처: Internet Society "Brief History of the Internet" / Paul Baran "On Distributed Communications", RAND 1964 / 통가: Al Jazeera·NPR 2022.2.22 보도)
 
+© 2026 박정훈 · 전체 시리즈: github.com/nous-zero/tech-history
+
 #기술의역사 #IT역사 #인터넷 #ARPANET #테크스토리
 
 ---

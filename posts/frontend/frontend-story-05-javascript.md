@@ -44,6 +44,8 @@
 
 (대화는 각색입니다. 출처: Brendan Eich 회고(brendaneich.com) / "JavaScript: The First 20 Years", ACM HOPL IV 2020 / Stack Overflow Developer Survey 2025)
 
+© 2026 박정훈 · 전체 시리즈: github.com/nous-zero/tech-history
+
 #기술의역사 #IT역사 #자바스크립트 #JavaScript #테크스토리
 
 ---

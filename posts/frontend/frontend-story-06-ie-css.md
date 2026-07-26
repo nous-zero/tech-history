@@ -46,6 +46,8 @@ MS는 Mosaic 코드를 재라이선스받아 Internet Explorer를 만들고 Wind
 
 (대화는 각색입니다. 출처: U.S. v. Microsoft 판결 기록(2001) / W3C CSS1 권고안(1996) / Mozilla 프로젝트 연혁 / 컴퓨터월드·디지털데일리 IE 종료 보도(2022))
 
+© 2026 박정훈 · 전체 시리즈: github.com/nous-zero/tech-history
+
 #기술의역사 #IT역사 #브라우저전쟁 #CSS #테크스토리
 
 ---

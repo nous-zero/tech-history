@@ -74,6 +74,8 @@
 
 (대화는 각색입니다. 출처: Cerf & Kahn, "A Protocol for Packet Network Intercommunication", IEEE 1974 / Internet Society "Final report on TCP/IP migration in 1983" / IPv6 통계: Google IPv6 Statistics·Internet Society Pulse 2026.4)
 
+© 2026 박정훈 · 전체 시리즈: github.com/nous-zero/tech-history
+
 #기술의역사 #IT역사 #인터넷 #TCPIP #테크스토리
 
 ---

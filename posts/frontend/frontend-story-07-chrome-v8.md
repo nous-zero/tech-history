@@ -44,6 +44,8 @@
 
 (대화는 각색입니다. 출처: StatCounter Global Stats(2026.5) / Microsoft IE 지원 종료 공지(2022.6.15) / V8 공식 문서)
 
+© 2026 박정훈 · 전체 시리즈: github.com/nous-zero/tech-history
+
 #기술의역사 #IT역사 #크롬 #브라우저전쟁 #테크스토리
 
 ---

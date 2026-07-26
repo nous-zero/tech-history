@@ -46,6 +46,8 @@
 
 (대화는 각색입니다. 출처: NCSA Mosaic 공식 기록 / Washington Post 1995.8.10 / NPR "Netscape's IPO Anniversary")
 
+© 2026 박정훈 · 전체 시리즈: github.com/nous-zero/tech-history
+
 #기술의역사 #IT역사 #넷스케이프 #닷컴 #테크스토리
 
 ---

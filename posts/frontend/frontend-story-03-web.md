@@ -55,6 +55,8 @@ HTTP — 문서를 주고받는 규칙 (배달 규칙)
 
 (대화는 각색입니다. 출처: 제안서 원문 info.cern.ch/Proposal.html / CNBC 2019.3.12 "Vague but exciting" / CERN 웹 퍼블릭 도메인 선언 1993.4.30)
 
+© 2026 박정훈 · 전체 시리즈: github.com/nous-zero/tech-history
+
 #기술의역사 #IT역사 #웹 #WWW #테크스토리
 
 ---

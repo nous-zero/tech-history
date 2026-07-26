@@ -42,6 +42,8 @@
 
 (대화는 각색입니다. 출처: npmjs.com / Wikipedia "npm left-pad incident" / The Register 2016.3.23)
 
+© 2026 박정훈 · 전체 시리즈: github.com/nous-zero/tech-history
+
 #기술의역사 #IT역사 #npm #오픈소스 #테크스토리
 
 ---

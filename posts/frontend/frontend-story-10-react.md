@@ -44,6 +44,8 @@
 
 (대화는 각색입니다. 출처: React 공식 블로그 "Why did we build React?"(2013) / Stack Overflow Developer Survey 2025 / webpack·Vite 공식 문서)
 
+© 2026 박정훈 · 전체 시리즈: github.com/nous-zero/tech-history
+
 #기술의역사 #IT역사 #React #테크스토리
 
 ---

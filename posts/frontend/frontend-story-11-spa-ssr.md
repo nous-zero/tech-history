@@ -50,6 +50,8 @@
 
 (대화는 각색입니다. 출처: Next.js 공식 문서 / Google Search Central "JavaScript SEO basics" / Open Graph 프로토콜(ogp.me))
 
+© 2026 박정훈 · 전체 시리즈: github.com/nous-zero/tech-history
+
 #기술의역사 #IT역사 #프론트엔드 #SSR #테크스토리
 
 ---

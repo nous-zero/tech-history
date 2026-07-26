@@ -46,6 +46,8 @@
 
 (대화는 각색입니다. 출처: jquery.com 공식 연혁 / W3Techs jQuery 사용 통계(2026.7, 전체 웹사이트의 67.3%) / Ryan Dahl, JSConf EU 2009)
 
+© 2026 박정훈 · 전체 시리즈: github.com/nous-zero/tech-history
+
 #기술의역사 #IT역사 #jQuery #NodeJS #테크스토리
 
 ---
