@@ -41,7 +41,7 @@ def new_canvas():
 
 
 def signature(draw, episode="01"):
-    draw.text((1150, 612), f"tech-history {episode}", font=f_regular(18),
+    draw.text((1150, 612), f"© 2026 박정훈 · tech-history {episode}", font=f_regular(18),
               fill=LGRAY, anchor="rs")
 
 
