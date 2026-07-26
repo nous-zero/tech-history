@@ -11,18 +11,18 @@
 | 편 | 제목 | 파일 | 현대 사례 (검증) | 이미지 | 상태 |
 |---|---|---|---|---|---|
 | 1 | 인터넷의 첫마디는 "LO"였다 | frontend-story-01-arpanet.md | 통가 5주 고립 ✅ | 3장 ✅ | ✅ **게시됨 2026-07-24** |
-| 2 | 하루 만에 언어를 갈아탄 날 | frontend-story-02-tcpip.md | IPv6 20년째 50.1% ✅ | 3장 ✅ | 완성 — 게시 예정 7/27 |
-| 3 | "모호하지만 흥미로움" | frontend-story-03-web.md | Vague but exciting 메모·1993 무료 개방 ✅ | 2장 ✅ | 완성 — 7/30 |
-| 4 | 알바생이 연 그림의 시대 | frontend-story-04-mosaic-netscape.md | 넷스케이프 IPO $28→$71 ✅ | 2장 ✅ | 완성 — 8/2 |
-| 5 | 10일 만에 만든 언어 | frontend-story-05-javascript.md | SO 2025 개발자 66% 사용 ✅ | 2장 ✅ | 완성 — 8/5 |
-| 6 | 끼워팔기 전쟁 | frontend-story-06-ie-css.md | 2022 IE 종료 한국 혼란 ✅ | 2장 ✅ | 완성 — 8/8 |
-| 7 | 속도의 전쟁 | frontend-story-07-chrome-v8.md | Chrome 65.23%(2026.5) ✅ | 2장 ✅ | 완성 — 8/11 |
-| 8 | 통역사와 탈옥 | frontend-story-08-jquery-node.md | jQuery 전체 사이트 67.3% ✅ | 2장 ✅ | 완성 — 8/14 |
-| 9 | 레고와 밀키트 | frontend-story-09-npm-lego.md | 2016 left-pad 사태 ✅ | 2장 ✅ | 완성 — 8/17 |
-| 10 | 알아서 바뀌는 화면 | frontend-story-10-react.md | SO 2025 React 약 45% ✅ | 2장 ✅ | 완성 — 8/20 |
-| 11 | 앱이 된 웹 (완결) | frontend-story-11-spa-ssr.md | OG 태그(ogp.me 표준) | 2장 ✅ | 완성 — 8/23 |
+| 2 | 하루 만에 언어를 갈아탄 날 | frontend-story-02-tcpip.md | IPv6 20년째 50.1% ✅ | 3장 ✅ | ✅ 게시됨 2026-07-26 |
+| 3 | "모호하지만 흥미로움" | frontend-story-03-web.md | Vague but exciting 메모·1993 무료 개방 ✅ | 2장 ✅ | 완성 — 7/27 |
+| 4 | 알바생이 연 그림의 시대 | frontend-story-04-mosaic-netscape.md | 넷스케이프 IPO $28→$71 ✅ | 2장 ✅ | 완성 — 7/28 |
+| 5 | 10일 만에 만든 언어 | frontend-story-05-javascript.md | SO 2025 개발자 66% 사용 ✅ | 2장 ✅ | 완성 — 7/29 |
+| 6 | 끼워팔기 전쟁 | frontend-story-06-ie-css.md | 2022 IE 종료 한국 혼란 ✅ | 2장 ✅ | 완성 — 7/30 |
+| 7 | 속도의 전쟁 | frontend-story-07-chrome-v8.md | Chrome 65.23%(2026.5) ✅ | 2장 ✅ | 완성 — 7/31 |
+| 8 | 통역사와 탈옥 | frontend-story-08-jquery-node.md | jQuery 전체 사이트 67.3% ✅ | 2장 ✅ | 완성 — 8/1 |
+| 9 | 레고와 밀키트 | frontend-story-09-npm-lego.md | 2016 left-pad 사태 ✅ | 2장 ✅ | 완성 — 8/2 |
+| 10 | 알아서 바뀌는 화면 | frontend-story-10-react.md | SO 2025 React 약 45% ✅ | 2장 ✅ | 완성 — 7/280 |
+| 11 | 앱이 된 웹 (완결) | frontend-story-11-spa-ssr.md | OG 태그(ogp.me 표준) | 2장 ✅ | 완성 — 7/283 |
 
-발행 주기: 3일 간격. 게시 직전 절차 = 본문 최종 확인 → 자동 게시(share 액션, 본문+대표 이미지 카드+깃허브 문서 링크) → 게시물 URL 확인.
+발행 주기: 매일 1편, 오전 10시 자동 게시(2026-07-27~08-04, 예약 작업 techstory-daily-linkedin). 게시 이력은 publish-log.md. 게시 직전 절차 = 본문 최종 확인 → 자동 게시(share 액션, 본문+대표 이미지 카드+깃허브 문서 링크) → 게시물 URL 확인.
 
 ## 사례 검증 기록 (규칙 1 — 전부 2026-07-24 검색·확인)
 
