@@ -19,8 +19,8 @@
 | 7 | 속도의 전쟁 | frontend-story-07-chrome-v8.md | Chrome 65.23%(2026.5) ✅ | 2장 ✅ | 완성 — 7/31 |
 | 8 | 통역사와 탈옥 | frontend-story-08-jquery-node.md | jQuery 전체 사이트 67.3% ✅ | 2장 ✅ | 완성 — 8/1 |
 | 9 | 레고와 밀키트 | frontend-story-09-npm-lego.md | 2016 left-pad 사태 ✅ | 2장 ✅ | 완성 — 8/2 |
-| 10 | 알아서 바뀌는 화면 | frontend-story-10-react.md | SO 2025 React 약 45% ✅ | 2장 ✅ | 완성 — 7/280 |
-| 11 | 앱이 된 웹 (완결) | frontend-story-11-spa-ssr.md | OG 태그(ogp.me 표준) | 2장 ✅ | 완성 — 7/283 |
+| 10 | 알아서 바뀌는 화면 | frontend-story-10-react.md | SO 2025 React 약 45% ✅ | 2장 ✅ | 완성 — 8/3 |
+| 11 | 앱이 된 웹 (완결) | frontend-story-11-spa-ssr.md | OG 태그(ogp.me 표준) | 2장 ✅ | 완성 — 8/4 |
 
 발행 주기: 매일 1편, 오전 10시 자동 게시(2026-07-27~08-04, 예약 작업 techstory-daily-linkedin). 게시 이력은 publish-log.md. 게시 직전 절차 = 본문 최종 확인 → 자동 게시(share 액션, 본문+대표 이미지 카드+깃허브 문서 링크) → 게시물 URL 확인.
 
