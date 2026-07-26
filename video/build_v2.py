@@ -12,6 +12,10 @@ v1(정적 슬라이드)과 달리 장면을 도형 애니메이션으로 그린�
 사용:
   python video/build_v2.py 01           # 시안(480p15, 빠름)
   python video/build_v2.py 01 --full    # 완성(1080p30)
+  python video/build_v2.py 01 --full --sub  # 자막을 영상에 구움(자막 기능 없는 플랫폼용)
+
+자막 기본값은 '굽지 않음' — 유튜브에는 episode.srt 를 따로 올린다
+(시청자가 켜고 끄기 + 자동 번역 + 검색 노출. 화면 핵심 단어 팝은 유지).
 
 음성: video/output/NN_v2/audio/segNNN.wav 가 있으면 그 길이에 맞춰 조립+음성 합성.
       없으면 글자 수로 길이를 추정해 무음 시안만 렌더(구조 확인용).
@@ -31,6 +35,7 @@ if hasattr(sys.stdout, "reconfigure"):
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EP = next((a for a in sys.argv[1:] if not a.startswith("-")), "01")
 FULL = "--full" in sys.argv
+BURN_SUB = "--sub" in sys.argv  # 자막을 영상에 구울지 (기본: SRT만 생성)
 OUT = os.path.join(ROOT, "video", "output", f"{EP}_v2")
 AUDIO_DIR = os.path.join(OUT, "audio")
 os.makedirs(OUT, exist_ok=True)
@@ -191,6 +196,8 @@ class Episode(Scene):
 
     # --- 공통 도우미 ---
     def sub(self, txt):
+        if not BURN_SUB:
+            return
         t = Text(txt, font=KFONT, font_size=30, color=INK)
         if t.width > 12.8:
             t.scale_to_fit_width(12.8)
