@@ -190,17 +190,34 @@ class ShortBase(MovingCameraScene):
         self.add(grp)
         self.subtitle = grp
 
+    POP_POS = [UP * 5.3 + LEFT * 1.2, UP * 5.0 + RIGHT * 1.3, UP * 5.4]
+
     def beats(self, info, acts):
         sents = split_sents(info["text"])
         chars = sum(len(s) for s in sents) or 1
         durs = [max(0.7, info["dur"] * len(s) / chars) for s in sents]
         scale = info["dur"] / sum(durs)
+        pops = self.SPEC.get("pops", {}).get(info["id"], [])
+        pop_i = 0
         for i, (txt, d) in enumerate(zip(sents, [x * scale for x in durs])):
             self.sub(txt)
+            pop = None
+            if i < len(pops) and pops[i]:
+                # 텍스트 팝 — 키워드가 화면 상단에 쾅 박힘 (앰버/흰색 교차, 살짝 기울임)
+                color = AMBER if pop_i % 2 == 0 else WHITE
+                pop = ktext(pops[i], fs=86, color=color)
+                pop.rotate(0.05 * (1 if pop_i % 2 else -1))
+                pop.move_to(self.POP_POS[pop_i % 3])
+                pop_i += 1
+                t_in = min(0.22, d * 0.2)
+                self.play(FadeIn(pop, scale=1.8), run_time=t_in)
+                d -= t_in
             if i < len(acts) and acts[i]:
-                acts[i](d)
+                acts[i](max(0.3, d - (0.15 if pop else 0)))
             else:
-                self.hold(d)
+                self.hold(max(0.3, d - (0.15 if pop else 0)))
+            if pop is not None:
+                self.play(FadeOut(pop, scale=0.8), run_time=0.15)
 
     def _drift(self, steps=1.0):
         # 줌 하한선(폭 7.2) 아래로는 더 밀고 들어가지 않음 — 자막 안전지대 보호
@@ -444,12 +461,19 @@ class ShortBase(MovingCameraScene):
 
 class ShortA(ShortBase):
     SPEC = {"segs": [0, 1, 2], "keep": {0, 1},
-            "hook": ["인터넷의 첫마디는", '"헬로"가 아니다']}
+            "hook": ["인터넷의 첫마디는", '"헬로"가 아니다'],
+            "pops": {0: ["첫마디?", None, "딱 두 글자"],
+                     1: [None, "첫 전송", None],
+                     2: ["크래시!", "그래서 LO", None]}}
 
 
 class ShortB(ShortBase):
     SPEC = {"segs": [3, 5, 6, 12],
-            "hook": ["핵전쟁이 만든", "인터넷"]}
+            "hook": ["핵전쟁이 만든", "인터넷"],
+            "pops": {3: [None, "냉전"],
+                     5: ["심장 하나", None, None],
+                     6: ["그물망", None, "옆길이 있다"],
+                     12: [None, "법칙", None]}}
 
 
 def build(short_cls, name):
