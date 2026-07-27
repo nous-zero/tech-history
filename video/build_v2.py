@@ -49,6 +49,7 @@ GRAY = "#6B7280"
 LGRAY = "#9CA3AF"
 BLUE = "#2563EB"
 RED = "#DC2626"
+AMBER = "#F59E0B"
 PAPER = "#F9FAFB"
 KFONT = "Malgun Gothic"
 MONO = "Consolas"
@@ -105,13 +106,15 @@ DATA, TIMED, HAVE_AUDIO = load_timed_segments()
 # ---------- Manim 장면 ----------
 
 from manim import (  # noqa: E402
-    config, Scene, VGroup, VMobject, Text, Dot, Circle, Line, DashedLine,
+    config, Scene, VGroup, VMobject, Group, Text, Dot, Circle, Line, DashedLine,
     Rectangle, RoundedRectangle, RegularPolygon, Triangle, Arrow, Underline,
-    SurroundingRectangle, DashedVMobject, ArcBetweenPoints,
+    SurroundingRectangle, DashedVMobject, ArcBetweenPoints, ImageMobject,
     Create, FadeIn, FadeOut, Transform, ReplacementTransform, Indicate, Wiggle,
-    Flash, MoveAlongPath, LaggedStart, GrowFromCenter,
+    Flash, MoveAlongPath, LaggedStart, GrowFromCenter, linear,
     UP, DOWN, LEFT, RIGHT, ORIGIN, UL, UR, DL, DR, WHITE, PI,
 )
+
+ASSETS = os.path.join(ROOT, "video", "output", "assets")  # 실사 사료(퍼블릭 도메인 검증분)
 
 config.background_color = WHITE
 if FULL:
@@ -226,6 +229,35 @@ class Episode(Scene):
             self.play(*[FadeOut(m) for m in ms], run_time=rt)
         else:
             self.wait(rt)
+
+    # --- 실사 사료 도우미 (하이브리드 v3) ---
+    def photo(self, fname, height=5.4, pos=ORIGIN, framed=True):
+        """흰 테두리 액자에 담긴 실사 사진. Group 반환(사진, [테두리])."""
+        img = ImageMobject(os.path.join(ASSETS, fname))
+        img.height = height
+        img.move_to(pos)
+        if framed:
+            border = Rectangle(width=img.width + 0.1, height=img.height + 0.1)
+            border.set_stroke(INK, 4).set_fill(None, 0).move_to(img)  # 흰 배경에서도 보이는 잉크색 액자
+            return Group(img, border)
+        return Group(img)
+
+    def show_photo(self, grp, d_in=0.8):
+        self.play(FadeIn(grp, scale=1.04), run_time=max(0.3, d_in))
+        if self.subtitle:  # 자막이 사진에 가려지지 않게 맨 위로
+            self.remove(self.subtitle)
+            self.add(self.subtitle)
+
+    def ken_burns(self, grp, d, zoom=1.06, drift=None):
+        """느린 줌/팬 — 정지 사진에 생명을 주는 다큐 문법.
+        액자째 함께 키운다(사진만 키우면 테두리를 삐져나옴)."""
+        if d <= 2.0 / config.frame_rate:
+            return
+        if drift is not None:
+            move = grp.animate.scale(zoom).shift(drift)
+        else:
+            move = grp.animate.scale(zoom)
+        self.play(move, run_time=d, rate_func=linear)
 
     def run_beats(self, S, acts):
         for i, (txt, d) in enumerate(S):
@@ -358,16 +390,28 @@ class Episode(Scene):
             self.hold(d - 2 * t_each - t3)
 
         def a1(d):
-            boxes = self.st["login"]
-            hl = SurroundingRectangle(VGroup(boxes[0], boxes[1]),
-                                      color=BLUE, corner_radius=0.15, buff=0.18)
-            hl.set_stroke(BLUE, 6)
-            self.st["hl"] = hl
-            self.act(d, Create(hl))
+            # 실사 전환: 재연 화면을 걷어내고 1969년 실제 로그 노트를 보여준다
+            outs = []
+            for k in ("term", "prompt", "login", "xmark", "route"):
+                if k in self.st:
+                    outs.append(FadeOut(self.st.pop(k)))
+            ph = self.photo("imp_log.jpg", height=4.6, pos=DOWN * 0.15)
+            cap = chip("1969.10.29 — UCLA 실제 기록", INK, 24).next_to(ph, UP, buff=0.3)
+            self.st["logph"] = ph
+            t1 = max(0.3, min(0.7, d * 0.25))
+            self.play(*outs, run_time=t1)
+            self.show_photo(ph, 0.6)
+            self.play(FadeIn(cap), run_time=0.3)
+            self.ken_burns(ph, d - t1 - 0.9, zoom=1.07)
 
         def a2(d):
-            self.act(d, Indicate(VGroup(self.st["login"][0], self.st["login"][1]),
-                                 color=BLUE, scale_factor=1.15))
+            ph = self.st["logph"]
+            hl = RoundedRectangle(corner_radius=0.08, width=3.6, height=0.66)
+            hl.set_fill(AMBER, 0.4).set_stroke(AMBER, 3)
+            hl.move_to(ph[0].get_center() + UP * 0.2)
+            t1 = max(0.3, min(0.8, d * 0.4))
+            self.play(FadeIn(hl, scale=1.2), run_time=t1)
+            self.hold(d - t1)
 
         self.run_beats(S, [a0, a1, a2])
 
@@ -379,23 +423,32 @@ class Episode(Scene):
             self.act(d, FadeIn(why, scale=1.5))
 
         def a1(d):
-            pent = RegularPolygon(n=5).scale(1.5).set_stroke(BLUE, 5).set_fill("#DBEAFE", 0.6)
-            pent.move_to(DOWN * 0.2)
-            lab = ktext("미 국방부", 28, GRAY).next_to(pent, DOWN, buff=0.3)
+            # 실사 전환: 냉전의 무게는 실제 핵실험 기록 사진으로
+            ph = self.photo("baker.jpg", height=5.8, pos=UP * 0.35, framed=False)
             cold = chip("냉전 시대", INK, 30).to_corner(UL, buff=0.5)
-            m = missile(1.2).move_to(UP * 2.6 + RIGHT * 3.4)
-            t1 = max(0.4, min(1.2, d * 0.45))
-            self.play(FadeOut(self.st.pop("why")), Create(pent), FadeIn(lab), FadeIn(cold), run_time=t1)
-            arc = ArcBetweenPoints(m.get_center(), pent.get_top() + UP * 0.7 + RIGHT * 0.4, angle=-PI / 5)
-            t2 = max(0.4, min(1.2, d * 0.3))
-            self.play(MoveAlongPath(m, arc), run_time=t2)
-            self.hold(d - t1 - t2)
+            cap = chip("1946 크로스로즈 핵실험 — 미 해군 기록", GRAY, 20).to_edge(DOWN, buff=1.05)
+            t1 = max(0.3, min(0.7, d * 0.25))
+            self.play(FadeOut(self.st.pop("why")), run_time=0.3)
+            self.show_photo(ph, t1)
+            self.play(FadeIn(cold), FadeIn(cap), run_time=0.4)
+            self.ken_burns(ph, d - t1 - 0.7, zoom=1.07)
 
         self.run_beats(S, [a0, a1])
 
     # --- 4~5: 별 모양 → 붕괴 ---
     def seg04(self, S):
         def a0(d):
+            # 실사: 냉전 미사일의 실체 — 1975년 타이탄II 발사 기록
+            ph = self.photo("titan.jpg", height=5.8, pos=RIGHT * 3.6 + UP * 0.25)
+            cap = chip("1975 타이탄II — 미 공군 기록", GRAY, 19).next_to(ph, DOWN, buff=0.22)
+            self.st["titan"] = Group(ph, cap)
+            t1 = max(0.3, min(0.7, d * 0.3))
+            self.show_photo(ph, t1)
+            self.play(FadeIn(cap), run_time=0.3)
+            self.ken_burns(ph, d - t1 - 0.3, zoom=1.06, drift=UP * 0.12)
+
+        def a1(d):
+            outs = [FadeOut(self.st.pop("titan"))]
             center = Circle(radius=0.4).set_stroke(BLUE, 5).set_fill("#DBEAFE", 1).move_to(UP * 0.4)
             clab = ktext("교환국", 24, GRAY).next_to(center, DOWN, buff=0.22)
             outer, spokes = VGroup(), VGroup()
@@ -407,15 +460,16 @@ class Episode(Scene):
                 outer.add(dot)
                 spokes.add(Line(center.get_center(), p, buff=0.3).set_stroke(LGRAY, 3))
             self.st["star"] = VGroup(spokes, outer, center, clab)
-            self.act(d, Create(center), FadeIn(clab),
-                     LaggedStart(*[Create(s) for s in spokes], lag_ratio=0.08),
-                     LaggedStart(*[FadeIn(o) for o in outer], lag_ratio=0.08),
-                     rt=min(2.0, d * 0.7))
-
-        def a1(d):
+            t1 = max(0.6, min(2.0, d * 0.55))
+            self.play(*outs, Create(center), FadeIn(clab),
+                      LaggedStart(*[Create(s) for s in spokes], lag_ratio=0.08),
+                      LaggedStart(*[FadeIn(o) for o in outer], lag_ratio=0.08),
+                      run_time=t1)
             m = missile(1.2).move_to(UP * 3.4 + RIGHT * 0.2)
             self.st["missile"] = m
-            self.act(d, FadeIn(m, shift=DOWN * 0.4))
+            t2 = max(0.3, min(0.8, d * 0.2))
+            self.play(FadeIn(m, shift=DOWN * 0.4), run_time=t2)
+            self.hold(d - t1 - t2)
 
         def a2(d):
             star = self.st["star"]
@@ -560,24 +614,25 @@ class Episode(Scene):
     # --- 9: IMP → 라우터 ---
     def seg09(self, S):
         def a0(d):
-            body = RoundedRectangle(corner_radius=0.18, width=2.0, height=3.4)
-            body.set_stroke(INK, 5).set_fill("#F3F4F6", 1).move_to(LEFT * 3.0 + UP * 0.3)
-            lab = mtext("IMP", fs=44, color=INK).move_to(body.get_top() + DOWN * 0.55)
-            vents = VGroup(*[Line(LEFT * 0.55, RIGHT * 0.55).set_stroke(LGRAY, 3)
-                             .move_to(body.get_center() + DOWN * (0.3 + 0.3 * i))
-                             for i in range(3)])
-            self.st["imp"] = VGroup(body, lab, vents)
-            self.act(d, FadeIn(self.st["imp"], scale=1.15))
+            # 실사: "비유가 아니라 실물" — IMP 전면 패널 사진
+            ph = self.photo("imp_panel.jpg", height=4.4, pos=LEFT * 3.0 + UP * 0.3)
+            tag = chip("IMP — 실물", BLUE, 24).next_to(ph, UP, buff=0.28)
+            self.st["imp"] = ph
+            self.st["imptag"] = tag
+            t1 = max(0.3, min(0.7, d * 0.3))
+            self.show_photo(ph, t1)
+            self.play(FadeIn(tag), run_time=0.3)
+            self.ken_burns(ph, d - t1 - 0.3, zoom=1.05)
 
         def a1(d):
-            size = chip("냉장고 크기", INK, 26).next_to(self.st["imp"], DOWN, buff=0.35)
+            size = chip("냉장고 크기", INK, 26).next_to(self.st["imp"], DOWN, buff=0.3)
             self.st["impsize"] = size
-            self.act(d, FadeIn(size), Indicate(self.st["imp"], color=BLUE, scale_factor=1.04))
+            self.act(d, FadeIn(size))
 
         def a2(d):
-            arrow = Arrow(LEFT * 1.6 + UP * 0.3, RIGHT * 0.6 + UP * 0.3, color=GRAY, stroke_width=6)
+            arrow = Arrow(RIGHT * 0.7 + UP * 0.2, RIGHT * 1.9 + UP * 0.2, color=GRAY, stroke_width=6)
             box = RoundedRectangle(corner_radius=0.12, width=1.8, height=0.55)
-            box.set_stroke(BLUE, 5).set_fill("#DBEAFE", 1).move_to(RIGHT * 2.6 + UP * 0.1)
+            box.set_stroke(BLUE, 5).set_fill("#DBEAFE", 1).move_to(RIGHT * 3.5 + UP * 0.1)
             ant = VGroup(
                 Line(box.get_top() + LEFT * 0.45, box.get_top() + LEFT * 0.45 + UP * 0.55),
                 Line(box.get_top() + RIGHT * 0.45, box.get_top() + RIGHT * 0.45 + UP * 0.55),
@@ -630,24 +685,42 @@ class Episode(Scene):
             self.act(d, *anims)
 
         def a1(d):
-            island = Circle(radius=0.55).set_stroke(INK, 5).set_fill(WHITE, 1)
-            island.move_to(RIGHT * 4.6 + UP * 0.3)
-            ilab = ktext("통가", 28, INK, bold=True).move_to(island)
-            cable = Line(LEFT * 0.4 + UP * 0.3, island.get_left(), buff=0.1).set_stroke(LGRAY, 4)
-            t1 = max(0.4, min(1.0, d * 0.3))
-            self.play(FadeIn(island), FadeIn(ilab), Create(cable), run_time=t1)
+            # 실사: 2022 통가 폭발 — NOAA 위성 실영상(프레임 넘기기)
+            frames = [ImageMobject(os.path.join(ASSETS, f"tonga_f{i}.png")) for i in range(9)]
+            for f in frames:
+                f.height = 3.5
+                f.move_to(RIGHT * 4.15 + UP * 0.45)
+            border = Rectangle(width=frames[0].width + 0.1, height=frames[0].height + 0.1)
+            border.set_stroke(INK, 4).move_to(frames[0])
+            lab = chip("통가 — NOAA 위성 실영상", INK, 20).next_to(border, DOWN, buff=0.25)
+            cable = Line(LEFT * 0.5 + UP * 0.3, border.get_left() + LEFT * 0.05, buff=0.1).set_stroke(LGRAY, 4)
+            t1 = max(0.4, min(0.9, d * 0.25))
+            self.add(frames[0])
+            if self.subtitle:
+                self.remove(self.subtitle)
+                self.add(self.subtitle)
+            self.play(FadeIn(border), FadeIn(lab), Create(cable), run_time=t1)
             broken = DashedVMobject(Line(cable.get_start(), cable.get_end()), num_dashes=8)
             broken.set_stroke(RED, 4)
-            wk = chip("5주 고립", RED, 32).next_to(island, UP, buff=0.6)
-            t2 = max(0.4, min(1.0, d * 0.3))
-            self.play(Transform(cable, broken), FadeIn(wk, scale=1.3), run_time=t2)
-            self.st["island"] = VGroup(island, ilab)
-            self.hold(d - t1 - t2)
+            wk = chip("5주 고립", RED, 30).next_to(border, UP, buff=0.28)
+            t2 = max(0.3, min(0.8, d * 0.2))
+            self.play(Transform(cable, broken), FadeIn(wk, scale=1.2), run_time=t2)
+            rest, cur, step = d - t1 - t2, 0, 0.24
+            while rest > step:
+                self.remove(frames[cur])
+                cur = (cur + 1) % 9
+                self.add(frames[cur])
+                if self.subtitle:
+                    self.remove(self.subtitle)
+                    self.add(self.subtitle)
+                self.wait(step)
+                rest -= step
+            if rest > 2.0 / config.frame_rate:
+                self.wait(rest)
+            self.st["sat_border"] = border
 
         def a2(d):
-            ring = DashedVMobject(Circle(radius=0.95), num_dashes=16)
-            ring.set_stroke(GRAY, 3).move_to(self.st["island"][0])
-            self.act(d, Create(ring), Indicate(self.st["island"], color=RED, scale_factor=1.1))
+            self.act(d, Indicate(self.st["sat_border"], color=RED, scale_factor=1.05))
 
         self.run_beats(S, [a0, a1, a2])
 
