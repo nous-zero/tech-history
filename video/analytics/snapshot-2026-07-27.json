@@ -1,0 +1,39 @@
+{
+ "collected_at": "2026-07-27T22:40:24",
+ "channel": "UCFDEkjffWuo6CxeOCThTjRA",
+ "channel_stats": {
+  "viewCount": "0",
+  "subscriberCount": "2",
+  "hiddenSubscriberCount": false,
+  "videoCount": "3"
+ },
+ "videos": [
+  {
+   "id": "aPR3TsM9Rls",
+   "title": "1969년, 컴퓨터 두 대가 \"LO\"를 주고받았다 — 인터넷 역사의 첫날 (ARPANET)",
+   "published": "2026-07-27T07:53:49Z",
+   "duration": "PT2M29S",
+   "viewCount": "4",
+   "likeCount": "0",
+   "commentCount": "0"
+  },
+  {
+   "id": "_2sLf6WfwvQ",
+   "title": "인터넷의 첫마디가 \"헬로\"가 아닌 진짜 이유",
+   "published": "2026-07-27T09:48:45Z",
+   "duration": "PT22S",
+   "viewCount": "708",
+   "likeCount": "4",
+   "commentCount": "0"
+  },
+  {
+   "id": "nDBT7il7H9w",
+   "title": "핵전쟁이 만든 인터넷, 40초 요약",
+   "published": "2026-07-27T10:24:31Z",
+   "duration": "PT29S",
+   "viewCount": "648",
+   "likeCount": "2",
+   "commentCount": "0"
+  }
+ ]
+}
