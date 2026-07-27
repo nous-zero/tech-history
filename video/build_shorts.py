@@ -27,9 +27,11 @@ OUT = os.path.join(ROOT, "video", "output", f"{EP}_v2")
 AUDIO_DIR = os.path.join(OUT, "audio")
 ASSETS = os.path.join(ROOT, "video", "output", "assets")
 
-GAP = 0.3
-HOOK_D = 1.6   # 훅 카드
-END_D = 2.2    # 엔딩 카드
+GAP = 0.15
+HOOK_D = 1.3   # 훅 카드
+END_D = 1.6    # 엔딩 카드
+SPEED = 1.35   # 나레이션 배속(음정 유지) — 쇼츠 문법
+ZOOM_DRIFT = 0.985  # 문장마다 화면이 서서히 밀고 들어감(정지화면 제거)
 
 DARK = "#0B1220"
 DGRID = "#1B2A44"
@@ -43,8 +45,8 @@ KFONT = "Malgun Gothic"
 MONO = "Consolas"
 
 from manim import (  # noqa: E402
-    config, Scene, VGroup, VMobject, Group, Text, Dot, Circle, Line, DashedLine,
-    Rectangle, RoundedRectangle, Triangle, ImageMobject,
+    config, MovingCameraScene, VGroup, VMobject, Group, Text, Dot, Circle, Line,
+    DashedLine, Rectangle, RoundedRectangle, Triangle, ImageMobject,
     Create, FadeIn, FadeOut, Transform, Indicate, Flash, LaggedStart, linear,
     UP, DOWN, LEFT, RIGHT, ORIGIN, UL, UR, DL, DR, WHITE, PI,
 )
@@ -64,11 +66,45 @@ with open(os.path.join(ROOT, "video", "scripts", f"{EP}.json"), encoding="utf-8"
     SCRIPT = json.load(f)
 
 
+FAST_DIR = os.path.join(OUT, "audio_fast")
+
+
 def seg_info(i):
-    wav = os.path.join(AUDIO_DIR, f"seg{i:03d}.wav")
+    """배속 처리된 음성 사용 — 없으면 ffmpeg atempo로 생성(음정 유지)."""
+    os.makedirs(FAST_DIR, exist_ok=True)
+    src = os.path.join(AUDIO_DIR, f"seg{i:03d}.wav")
+    wav = os.path.join(FAST_DIR, f"seg{i:03d}.wav")
+    if not os.path.exists(wav) or os.path.getmtime(wav) < os.path.getmtime(src):
+        import imageio_ffmpeg
+        subprocess.run([imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-i", src,
+                        "-filter:a", f"atempo={SPEED}", wav], check=True, capture_output=True)
     with wave.open(wav) as w:
         dur = w.getnframes() / float(w.getframerate())
     return {"id": i, "text": SCRIPT["segments"][i]["text"], "dur": dur, "wav": wav}
+
+
+def make_bgm(dur_s, path):
+    """저음 펄스 BGM 합성(104BPM 킥+햇+서브 드론) — 무음 제거용, 낮게 깔림."""
+    sr = 44100
+    t = np.arange(int(dur_s * sr)) / sr
+    beat = 60 / 104
+    sig = 0.05 * np.sin(2 * np.pi * 55 * t) * (0.7 + 0.3 * np.sin(2 * np.pi * t / 8))
+    for k in np.arange(0, dur_s, beat):
+        idx = (t >= k) & (t < k + 0.18)
+        tt = t[idx] - k
+        sig[idx] += 0.33 * np.sin(2 * np.pi * (60 * np.exp(-tt * 9) + 40) * tt) * np.exp(-tt * 16)
+    rng = np.random.default_rng(7)
+    noise = rng.standard_normal(len(t)) * 0.10
+    for k in np.arange(beat / 2, dur_s, beat):
+        idx = (t >= k) & (t < k + 0.05)
+        sig[idx] += noise[idx] * np.exp(-(t[idx] - k) * 90)
+    sig = np.tanh(sig) * 0.8
+    data = (sig * 32767).astype(np.int16)
+    with wave.open(path, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(sr)
+        w.writeframes(data.tobytes())
 
 
 def split_sents(text):
@@ -110,20 +146,24 @@ def chip(s, color=RED, fs=34):
     return VGroup(box, t)
 
 
-class ShortBase(Scene):
+class ShortBase(MovingCameraScene):
     SPEC = None  # {"segs": [...], "hook": [...], "title": ...}
 
     def construct(self):
         self.add(grid_bg())
         self.subtitle = None
         self.hook_card()
+        keep = self.SPEC.get("keep", set())  # 이 세그 뒤에는 화면을 지우지 않음(이야기 연속)
         for k, i in enumerate(self.SPEC["segs"]):
             info = seg_info(i)
             getattr(self, f"seg{i:03d}")(info)
             if self.subtitle:
                 self.remove(self.subtitle)
                 self.subtitle = None
-            self.clear_stage(GAP if k < len(self.SPEC["segs"]) - 1 else 0.3)
+            if i in keep:
+                self.hold(GAP)
+            else:
+                self.clear_stage(GAP if k < len(self.SPEC["segs"]) - 1 else 0.3)
         self.end_card()
 
     # --- 공통 ---
@@ -135,6 +175,16 @@ class ShortBase(Scene):
         bg = RoundedRectangle(corner_radius=0.18, width=t.width + 0.5, height=t.height + 0.42)
         bg.set_fill("#000000", 0.55).set_stroke(width=0).move_to(t)
         grp = VGroup(bg, t)
+        # 카메라에 고정 — 줌이 들어가도 자막은 항상 같은 화면 크기·위치
+        frame = self.camera.frame
+        base_w = grp.width
+
+        def pin(m):
+            k = frame.width / config.frame_width
+            m.set_width(base_w * k)
+            m.move_to(frame.get_center() + DOWN * frame.height * 0.319)
+
+        grp.add_updater(pin)
         if self.subtitle:
             self.remove(self.subtitle)
         self.add(grp)
@@ -152,24 +202,40 @@ class ShortBase(Scene):
             else:
                 self.hold(d)
 
+    def _drift(self, steps=1.0):
+        # 줌 하한선(폭 7.2) 아래로는 더 밀고 들어가지 않음 — 자막 안전지대 보호
+        frame = self.camera.frame
+        if frame.width * (ZOOM_DRIFT ** steps) < 7.2:
+            return None
+        return frame.animate.scale(ZOOM_DRIFT ** steps)
+
     def act(self, d, *anims, rt=None):
         if anims:
             rt = max(0.3, min(rt if rt is not None else min(1.2, d * 0.6), d))
-            self.play(*anims, run_time=rt)
+            drift = self._drift()
+            self.play(*(list(anims) + ([drift] if drift else [])), run_time=rt)
             d -= rt
         self.hold(d)
 
     def hold(self, d):
-        if d > 2.0 / config.frame_rate:
+        # 정지화면 금지 — 대기 시간에도 화면이 천천히 밀고 들어간다
+        if d <= 2.0 / config.frame_rate:
+            return
+        drift = self._drift(max(1.0, d * 2))
+        if drift:
+            self.play(drift, run_time=d, rate_func=linear)
+        else:
             self.wait(d)
 
     def clear_stage(self, rt):
         ms = [m for m in self.mobjects if m is not self.subtitle]
         fade = ms[1:]  # ms[0] = 모눈 배경은 유지
+        frame = self.camera.frame
+        reset = frame.animate.scale(config.frame_width / frame.width)  # 줌 원위치
         if fade:
-            self.play(*[FadeOut(m) for m in fade], run_time=max(0.25, rt))
+            self.play(*[FadeOut(m) for m in fade], reset, run_time=max(0.25, rt))
         else:
-            self.hold(rt)
+            self.play(reset, run_time=max(0.25, rt))
 
     def photo(self, fname, height=4.5, pos=ORIGIN):
         img = ImageMobject(os.path.join(ASSETS, fname))
@@ -189,10 +255,12 @@ class ShortBase(Scene):
         lines = self.SPEC["hook"]
         t1 = ktext(lines[0], fs=72, color=WHITE).move_to(UP * 1.6)
         t2 = ktext(lines[1], fs=88, color=AMBER).move_to(UP * 0.1)
-        self.play(FadeIn(t1, scale=1.2), run_time=0.4)
-        self.play(FadeIn(t2, scale=1.35), Flash(t2.get_center(), color=AMBER, flash_radius=2.2), run_time=0.5)
-        self.wait(HOOK_D - 0.9)
-        self.play(FadeOut(t1), FadeOut(t2), run_time=0.3)
+        frame = self.camera.frame
+        frame.scale(1.12)  # 펀치 인으로 시작
+        self.play(FadeIn(t1, scale=1.2), frame.animate.scale(1 / 1.12), run_time=0.4)
+        self.play(FadeIn(t2, scale=1.35), Flash(t2.get_center(), color=AMBER, flash_radius=2.2), run_time=0.45)
+        self.play(frame.animate.scale(0.97), run_time=max(0.2, HOOK_D - 0.85), rate_func=linear)
+        self.play(FadeOut(t1), FadeOut(t2), frame.animate.scale(1 / 0.97), run_time=0.25)
 
     def end_card(self):
         t = ktext("전체 이야기는 채널에서", fs=52).move_to(UP * 0.8)
@@ -375,7 +443,7 @@ class ShortBase(Scene):
 
 
 class ShortA(ShortBase):
-    SPEC = {"segs": [0, 1, 2],
+    SPEC = {"segs": [0, 1, 2], "keep": {0, 1},
             "hook": ["인터넷의 첫마디는", '"헬로"가 아니다']}
 
 
@@ -395,9 +463,13 @@ def build(short_cls, name):
     track = AudioSegment.silent(duration=int(HOOK_D * 1000))
     segs = short_cls.SPEC["segs"]
     for k, i in enumerate(segs):
-        track += AudioSegment.from_wav(os.path.join(AUDIO_DIR, f"seg{i:03d}.wav"))
+        track += AudioSegment.from_wav(seg_info(i)["wav"])  # 배속본 사용(화면 타이밍과 동일 소스)
         track += AudioSegment.silent(duration=int((GAP if k < len(segs) - 1 else 0.3) * 1000))
     track += AudioSegment.silent(duration=int(END_D * 1000))
+    bgm_path = os.path.join(OUT, f"{name}_bgm.wav")
+    make_bgm(len(track) / 1000 + 0.5, bgm_path)
+    bgm = AudioSegment.from_wav(bgm_path).apply_gain(-13)
+    track = bgm[:len(track)].overlay(track)  # 비트 위에 육성
     apath = os.path.join(OUT, f"{name}_audio.wav")
     track.export(apath, format="wav")
     import imageio_ffmpeg
