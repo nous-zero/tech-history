@@ -17,5 +17,8 @@
 | frontend-story-10-react.md | LinkedIn | 승인 | 2026-07-28 | 소급 — 7/24 전수 검증분 |
 | frontend-story-11-spa-ssr.md | LinkedIn | 승인 | 2026-07-28 | 소급 — 7/24 전수 검증분 |
 | 01-frontend.md | LinkedIn | 승인 | 2026-07-28 | 소급 — 시리즈 소개문 |
+| video/output/02_v2/episode.mp4 (2편 본편) | YouTube @nous-zero | 승인 | 2026-07-28 | release-director 최종 검토(§8 상시 승인). 근거: ①counsel 심사 결과서(657a301 — 사료 9종 자산 대장·배지 재현 판정, 조건=재현 표기·TASL 크레딧 → 영상 내 "재현 이미지" 표기+설명란 TASL 전문 이행 확인) ②STT 전수 검수 audio_qc_report.md(사본 refs/audio-qc-ep02.md, 3차 재생산 포함 미해결 0) ③길이 불변식 171.97s=트랙 실측 일치, 1080p, 프레임 표본 6장 육안 ④SRT 갱신 대조 ⑤썸네일 공식 준수 ⑥메타 rule8(제목 키워드+숫자+훅) |
+| video/output/02_v2/shorts_A.mp4 (배지 반전 28s) | YouTube Shorts | 승인 | 2026-07-28 | 최종 음성 반영 재렌더(22:05), 1080x1920, 27.8s, 프레임 검수. 설명·고정댓글에 본편 링크 의무(analyst 지적) |
+| video/output/02_v2/shorts_B.mp4 (요약 40s) | YouTube Shorts | 승인 | 2026-07-28 | 최종 음성 반영 재렌더(22:19), 1080x1920, 40.1s, 프레임 검수. 동일 본편 링크 의무 |
 
 > 소급 승인 사유: 위 항목은 2026-07-24 사례 전수 검증을 통과하고 자체 제작 이미지만 사용한 기존 발행 라인이다(가동 중인 매일 16시 자동 게시의 연속성 보장). **신규 콘텐츠(유튜브 본편·쇼츠 포함)는 소급 없이 건별 심사가 원칙.**
