@@ -37,7 +37,24 @@ EP = next((a for a in sys.argv[1:] if not a.startswith("-")), "01")
 FULL = "--full" in sys.argv
 BURN_SUB = "--sub" in sys.argv  # 자막을 영상에 구울지 (기본: SRT만 생성)
 OUT = os.path.join(ROOT, "video", "output", f"{EP}_v2")
-AUDIO_DIR = os.path.join(OUT, "audio")
+
+
+def _optval(name, default):
+    """--이름=값 꼴 옵션 파싱 (예: --audio-dir=audio_take2)."""
+    pref = f"--{name}="
+    for a in sys.argv[1:]:
+        if a.startswith(pref):
+            return a.split("=", 1)[1]
+    return default
+
+
+# 음성 폴더 선택: 음성팀이 audio/를 재작업 중일 때 스냅샷(audio_take2 등)으로
+# 타이밍만 잡아 시안을 렌더할 수 있게 한다. 기본값은 기존과 동일한 audio/.
+AUDIO_SUB = _optval("audio-dir", "audio")
+AUDIO_DIR = os.path.join(OUT, AUDIO_SUB)
+# 출력 파일명 선택: 시안을 episode.mp4 와 다른 이름으로 남겨 최종본과 섞이지 않게.
+OUT_NAME = _optval("out-name", "episode.mp4")
+OUT_STEM = os.path.splitext(OUT_NAME)[0]
 os.makedirs(OUT, exist_ok=True)
 
 GAP = 0.35          # 세그먼트 사이 쉼(초) — 음성에도 같은 길이 무음 삽입
@@ -1419,7 +1436,7 @@ def build_srt():
             n += 1
             t += d
         t += GAP
-    path = os.path.join(OUT, "episode.srt")
+    path = os.path.join(OUT, f"{OUT_STEM}.srt")
     with open(path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
     return path
@@ -1431,7 +1448,7 @@ def build_audio():
     for seg in TIMED:
         track += AudioSegment.from_wav(seg["wav"])
         track += AudioSegment.silent(duration=int(GAP * 1000))
-    path = os.path.join(OUT, "audio_track.wav")
+    path = os.path.join(OUT, f"{OUT_STEM}_track.wav")
     track.export(path, format="wav")
     return path
 
@@ -1439,6 +1456,9 @@ def build_audio():
 def main():
     print(f"[v2] {EP}편 | 음성: {'있음 — 완성 조립' if HAVE_AUDIO else '없음 — 무음 시안'} | "
           f"{'1080p30' if FULL else '480p15 시안'}")
+    if AUDIO_SUB != "audio":
+        print(f"[v2] 주의: 음성 스냅샷 '{AUDIO_SUB}' 타이밍 기준 시안 — 최종본 아님"
+              f" (최종은 audio/ 확정 후 재렌더)")
     total = INTRO_D + sum(s["total"] + GAP for s in TIMED) + 1.2
     print(f"[v2] 예상 길이: {total:.0f}초 ({total / 60:.1f}분)")
 
@@ -1459,7 +1479,7 @@ def main():
     if HAVE_AUDIO:
         import imageio_ffmpeg
         audio = build_audio()
-        final = os.path.join(OUT, "episode.mp4")
+        final = os.path.join(OUT, OUT_NAME)
         cmd = [imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-i", silent, "-i", audio,
                "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", final]
         subprocess.run(cmd, check=True, capture_output=True)
