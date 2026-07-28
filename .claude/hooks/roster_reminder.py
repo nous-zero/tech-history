@@ -17,7 +17,10 @@ print(
     "음성 audio-producer/소재조달 asset-scout/소재제작 asset-creator/저작권 copyright-counsel/"
     "신기술 tech-scout/발행 publisher/분석 marketing-analyst/감사 auditor)에 해당하면 "
     "본선이 직접 처리하지 말고 해당 에이전트를 자동 호출하고, 산출물이 다음 공정을 부르면 연쇄 호출하라. "
-    "예외: 1분 내 잡무. 외부 게시 실행·비용·계정 생성은 사용자 승인 게이트. "
-    "발행은 심사 대장(refs/publish-reviews.md) 승인 행 필수(훅 강제). 공정 완료 시 상태판(refs/pipeline-status.md) 갱신."
+    "유튜브 릴리스 종단(최종 검토→보완→업로드)은 발행 총감독 release-director 관할 — GOVERNANCE §8 상시 승인으로 "
+    "품질 게이트 전 항목 통과 시 사용자 결재 없이 자동 발행(문제 시에만 사용자 호출). "
+    "예외: 1분 내 잡무. 비용 발생·계정 생성·게시물 삭제·신규 플랫폼 첫 게시는 여전히 사용자 게이트. "
+    "발행은 심사 대장(refs/publish-reviews.md) 승인 행 필수(훅 강제, §8 범위는 release-director가 직접 기록). "
+    "공정 완료 시 상태판(refs/pipeline-status.md) 갱신."
 )
 sys.exit(0)
