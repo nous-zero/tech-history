@@ -90,6 +90,38 @@ def main():
                       % (os.path.basename(src), i + 1, a[i][:80], b[i][:80]))
         block("원본(%s)과 전송 본문 길이 불일치 — 원본 %d줄 vs 전송 %d줄"
               % (os.path.basename(src), len(a), len(b)))
+    # --- 거버넌스 승격 검사 1: 발행 전 심사 결과서 (refs/publish-reviews.md) ---
+    # 대장 파일이 있는 프로젝트에서만 강제(다른 프로젝트에선 무동작).
+    reviews_path = os.path.join(root, "refs", "publish-reviews.md")
+    if os.path.exists(reviews_path):
+        try:
+            reviews = open(reviews_path, encoding="utf-8").read()
+        except Exception:
+            reviews = ""
+        base = os.path.basename(src)
+        approved = any(
+            (base in line and "승인" in line and not line.strip().startswith("#"))
+            for line in reviews.split("\n")
+        )
+        if not approved:
+            block("발행 전 심사 미등재 — %s 가 refs/publish-reviews.md 에 '승인' 상태로 없음.\n"
+                  "절차: copyright-counsel 심사 → 대장에 행 추가(| %s | 채널 | 승인 | 날짜 | 비고 |) → 재시도.\n"
+                  "(GOVERNANCE 4절 승격 게이트, 2026-07-28)" % (base, base))
+    # --- 거버넌스 승격 검사 2: 외부 소재는 자산 대장 등록 필수 ---
+    # 자체 제작물(우리 저장소 raw URL)은 면제. 외부 호스트 미디어는 refs/asset-ledger.md 등재 필요.
+    ledger_path = os.path.join(root, "refs", "asset-ledger.md")
+    img_url = params.get("content__submitted_image_url") or ""
+    if img_url and os.path.exists(ledger_path):
+        own = re.match(r"https?://raw\.githubusercontent\.com/nous-zero/", img_url)
+        if not own:
+            try:
+                ledger = open(ledger_path, encoding="utf-8").read()
+            except Exception:
+                ledger = ""
+            if img_url not in ledger:
+                block("외부 소재 대장 미등록 — 첨부 이미지 %s 가 refs/asset-ledger.md 에 없음.\n"
+                      "절차: asset-scout 라이선스 실측 검증 → 대장 등록 → 재시도. "
+                      "(자체 제작물은 저장소 raw URL 사용 시 면제)" % img_url[:100])
     img = params.get("content__submitted_image_url")
     if img:
         try:
