@@ -1,0 +1,150 @@
+{
+ "collected_at": "2026-07-28T00:04:27",
+ "channel": "UCFDEkjffWuo6CxeOCThTjRA",
+ "range": [
+  "2026-07-14",
+  "2026-07-28"
+ ],
+ "note": "분석 데이터는 1~2일 지연 확정 — 빈 배열은 '미확정'이지 0이 아님",
+ "by_day": {
+  "headers": [
+   "day",
+   "views",
+   "estimatedMinutesWatched",
+   "averageViewDuration",
+   "averageViewPercentage",
+   "subscribersGained"
+  ],
+  "rows": [
+   [
+    "2026-07-14",
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   [
+    "2026-07-15",
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   [
+    "2026-07-16",
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   [
+    "2026-07-17",
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   [
+    "2026-07-18",
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   [
+    "2026-07-19",
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   [
+    "2026-07-20",
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   [
+    "2026-07-21",
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   [
+    "2026-07-22",
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   [
+    "2026-07-23",
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   [
+    "2026-07-24",
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   [
+    "2026-07-25",
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  ]
+ },
+ "by_video": {
+  "headers": [
+   "video",
+   "views",
+   "estimatedMinutesWatched",
+   "averageViewDuration",
+   "averageViewPercentage",
+   "likes",
+   "comments"
+  ],
+  "rows": []
+ },
+ "traffic_sources": {
+  "headers": [
+   "insightTrafficSourceType",
+   "views"
+  ],
+  "rows": []
+ },
+ "search_terms": {
+  "headers": [
+   "insightTrafficSourceDetail",
+   "views"
+  ],
+  "rows": []
+ },
+ "geography": {
+  "headers": [
+   "country",
+   "views"
+  ],
+  "rows": []
+ }
+}
