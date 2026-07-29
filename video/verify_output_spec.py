@@ -83,6 +83,33 @@ SILENCE_GAP_MAX = 0.5
 SILENCE_NOISE = "-35dB"
 SILENCE_MIND = 0.15
 
+# [무음 정의 정교화 — 2026-07-30 audio-producer 심의]
+# 문제: 최초 판(원시 측정)은 episode_track.wav 의 무음을 통째로 세어 3편을 미달
+# 판정했다(13.5% / 최장 2.91s). 그러나 이 트랙은 build_v2.build_audio(build_v2.py:2191)
+# 가 **설계상 무음을 직접 삽입해** 만든 것이다:
+#     track = silent(INTRO_D 2.8s) + Σ( seg wav + silent(GAP 0.35s) )
+# 즉 최소 2.8 + 0.35×세그수 만큼의 무음은 '결함'이 아니라 '조립 사양'이다.
+# 3편 실측 분해(15세그, 193.10s): INTRO 2.80s + GAP 5.25s = 설계 8.05s.
+# 미달 판정의 근거였던 '최장 공백 2.91s'는 **트랙 맨 앞 0.00~2.91s = 인트로 카드**였다
+# (2.80 설계 + seg000 머리 0.11). 2편도 같은 자리에서 2.90s — 즉 이 축은 편이 뭐든
+# 항상 인트로만 집어내며 내레이션에 대해 아무것도 말하지 않는, 죽은 계측이었다.
+#
+# 정정 방향: 임계를 느슨하게 푸는 것이 아니라 **재는 대상을 정의한다**.
+#   잉여 무음(excess) = 실측 무음 길이 − 그 구간이 설계 무음(INTRO·GAP)과 겹친 길이
+#   분모 = 내레이션 실체 구간 = Σ(seg wav 길이) = 트랙 − 설계 무음 총량
+# 두 지표 모두 이 하나의 개념에서 나온다. 임계값(12% / 0.5s)은 **바꾸지 않았다**.
+#
+# 검출력 회귀 실측(같은 도구, 같은 임계):
+#   3편 원시 13.5% · 최장 2.91s(인트로) → 잉여  9.69% · 최장 0.37s  → 통과
+#   2편 원시 22.2% · 최장 2.90s(인트로) → 잉여 18.41% · 최장 1.15s  → 미달 유지
+# 2편은 미달로 남고(다듬기 미적용), 최장 공백 축은 '인트로 2.90s'라는 무의미한 값
+# 대신 seg007 의 실제 1.15s 공백을 가리키게 됐다 — 검출력은 죽은 게 아니라 살아났다.
+# 경계를 걸친 무음(세그 꼬리+GAP+다음 세그 머리)도 설계분만 빼고 나머지는 전부
+# 잉여로 세므로, 조각을 넘나들며 숨는 긴 공백을 놓치지 않는다.
+#
+# 원시값은 지우지 않고 INFO 로 계속 출력한다 — 값을 화면에서 없애면 결함 2
+# ("없는 것은 눈에 띄지 않는다")를 그대로 재발시킨다.
+
 # [길이 불변식] 허용 오차 0.3초(본선 지시). 대본 합산 ↔ 오디오 트랙 ↔ 영상.
 # 대본 합산식은 build_v2.py 조립식과 동일해야 한다: INTRO_D + Σ(세그 + GAP).
 DUR_TOL = 0.3
@@ -190,7 +217,55 @@ def silence_stats(path, total_dur):
     return {"total_silence": tot,
             "ratio": (tot / total_dur) if total_dur else None,
             "max_gap": max([b - a for a, b in spans], default=0.0),
-            "count": len(spans)}
+            "count": len(spans),
+            "spans": spans}
+
+
+def designed_silence_map(ep, audio_dir):
+    """build_audio 조립식을 되짚어 '설계상 삽입된 무음'의 시각 경계를 복원한다.
+
+    반환: (구간목록, 내레이션 실체 초). 구간은 (시작, 끝, 종류).
+    추정이 아니라 실제 seg wav 길이를 누적해 만든 지도이므로, 트랙 길이와 소수점
+    둘째 자리까지 맞는다(3편 실측: 조립 합산 193.104 vs wav 193.102, 차 0.002s).
+    대본·세그 wav 가 없으면 (None, 사유) — 지도 없이 추측하지 않는다(rule6)."""
+    sp = os.path.join(ROOT, "video", "scripts", "%s.json" % ep)
+    if not os.path.exists(sp):
+        return None, "대본 없음: %s" % os.path.basename(sp)
+    with open(sp, encoding="utf-8") as f:
+        data = json.load(f)
+    regions, narr, t = [(0.0, INTRO_D, "INTRO")], 0.0, INTRO_D
+    for seg in data["segments"]:
+        wp = os.path.join(audio_dir, "seg%03d.wav" % seg["id"])
+        if not os.path.exists(wp):
+            return None, "세그 wav 누락: seg%03d" % seg["id"]
+        with contextlib.closing(wave.open(wp, "rb")) as w:
+            d = w.getnframes() / float(w.getframerate())
+        narr += d
+        t += d
+        regions.append((t, t + GAP, "GAP"))
+        t += GAP
+    return (regions, narr), ""
+
+
+def excess_silence(spans, regions, narr):
+    """설계 무음을 뺀 '잉여 무음'을 집계 — 비율·최장 모두 이 하나의 개념에서 나온다.
+
+    구간이 설계 무음(인트로·GAP)과 겹친 만큼만 면제하고 나머지는 전부 센다. 그래서
+    세그 꼬리 → GAP → 다음 세그 머리로 이어지는 긴 공백도 설계분 0.35s 만 빠지고
+    실제 초과분은 그대로 잡힌다."""
+    tot, mx, mx_at, n = 0.0, 0.0, None, 0
+    for s0, s1 in spans:
+        designed = 0.0
+        for r0, r1, _kind in regions:
+            designed += max(0.0, min(s1, r1) - max(s0, r0))
+        ex = max(0.0, (s1 - s0) - designed)
+        if ex > 1e-6:
+            tot += ex
+            n += 1
+            if ex > mx:
+                mx, mx_at = ex, s0
+    return {"total": tot, "ratio": (tot / narr) if narr else None,
+            "max_gap": mx, "max_at": mx_at, "count": n}
 
 
 def wav_info(path):
@@ -366,14 +441,42 @@ def verify_body(rows, ep, out_dir):
     if os.path.exists(trk):
         wi = wav_info(trk)
         st = silence_stats(trk, wi["duration"])
-        ratio = st["ratio"]
-        rows.append(Row(tag, "무음 비율(내레이션)",
-                        "%.1f%% (총 %.1fs / %d구간)" % (ratio * 100, st["total_silence"], st["count"]),
-                        "≤ %.0f%%" % (SILENCE_RATIO_MAX * 100),
-                        "PASS" if ratio <= SILENCE_RATIO_MAX else "FAIL",
-                        "임계 %s / 최소 %ss" % (SILENCE_NOISE, SILENCE_MIND)))
-        rows.append(Row(tag, "최장 공백", "%.2fs" % st["max_gap"], "≤ %.1fs" % SILENCE_GAP_MAX,
-                        "PASS" if st["max_gap"] <= SILENCE_GAP_MAX else "FAIL"))
+        # 원시 측정값은 판정에서 내렸지만 화면에서는 내리지 않는다(위 '무음 정의' 주석).
+        rows.append(Row(tag, "무음 원시 측정", "%.1f%% (총 %.1fs / %d구간) · 최장 %.2fs"
+                        % (st["ratio"] * 100, st["total_silence"], st["count"], st["max_gap"]),
+                        "참고(설계 무음 포함)", "INFO",
+                        "임계 %s / 최소 %ss — 설계 무음(인트로 %.1fs + GAP %.2fs×세그수) 포함값"
+                        % (SILENCE_NOISE, SILENCE_MIND, INTRO_D, GAP)))
+        dmap, derr = designed_silence_map(ep, os.path.join(out_dir, "audio"))
+        if dmap is None:
+            # 지도를 못 만들면 원시값으로 판정하되, 그 사실을 반드시 표기한다 —
+            # 설계 무음이 섞인 값이라 과대 판정될 수 있음을 숨기지 않는다.
+            ratio = st["ratio"]
+            rows.append(Row(tag, "무음 비율(내레이션)",
+                            "%.1f%% (원시)" % (ratio * 100), "≤ %.0f%%" % (SILENCE_RATIO_MAX * 100),
+                            "PASS" if ratio <= SILENCE_RATIO_MAX else "FAIL",
+                            "설계 무음 분해 불가(%s) — 원시값 판정이라 과대평가 가능" % derr))
+            rows.append(Row(tag, "최장 공백", "%.2fs (원시)" % st["max_gap"],
+                            "≤ %.1fs" % SILENCE_GAP_MAX,
+                            "PASS" if st["max_gap"] <= SILENCE_GAP_MAX else "FAIL", derr))
+        else:
+            regions, narr = dmap
+            ng = len([1 for _a, _b, k in regions if k == "GAP"])
+            ex = excess_silence(st["spans"], regions, narr)
+            rows.append(Row(tag, "설계 무음(조립 사양)",
+                            "%.2fs (인트로 %.1fs + GAP %.2fs×%d)"
+                            % (INTRO_D + GAP * ng, INTRO_D, GAP, ng),
+                            "build_v2.build_audio", "INFO",
+                            "내레이션 실체 구간 %.2fs = 세그 wav 합산" % narr))
+            rows.append(Row(tag, "무음 비율(내레이션 내부)",
+                            "%.1f%% (잉여 %.1fs / %d구간)" % (ex["ratio"] * 100, ex["total"], ex["count"]),
+                            "≤ %.0f%%" % (SILENCE_RATIO_MAX * 100),
+                            "PASS" if ex["ratio"] <= SILENCE_RATIO_MAX else "FAIL",
+                            "설계 무음 제외 · 분모 %.2fs" % narr))
+            rows.append(Row(tag, "최장 공백(설계 제외)", "%.2fs" % ex["max_gap"],
+                            "≤ %.1fs" % SILENCE_GAP_MAX,
+                            "PASS" if ex["max_gap"] <= SILENCE_GAP_MAX else "FAIL",
+                            ("최장 지점 %.2fs 부근" % ex["max_at"]) if ex["max_at"] is not None else ""))
         if wi["clipped"] is not None:
             rows.append(Row(tag, "클리핑(표본)", "%d개" % wi["clipped"], "0개",
                             "PASS" if wi["clipped"] == 0 else "FAIL", "episode_track.wav 표본 단위"))
