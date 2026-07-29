@@ -1087,6 +1087,19 @@ class Short03B(Short03Base):
                      11: [None, "특허료 없이", "공짜"]}}
 
 
+def video_seconds(path):
+    """mp4 재생 길이(초) 실측 — ffmpeg 표준출력 파싱(추정 금지, rule6)."""
+    import imageio_ffmpeg
+    out = subprocess.run([imageio_ffmpeg.get_ffmpeg_exe(), "-hide_banner", "-i", path],
+                         capture_output=True, text=True,
+                         encoding="utf-8", errors="replace").stderr
+    for line in out.split("\n"):
+        if "Duration:" in line:
+            h, m, s = line.split("Duration:")[1].split(",")[0].strip().split(":")
+            return int(h) * 3600 + int(m) * 60 + float(s)
+    raise RuntimeError("영상 길이 판독 실패: " + path)
+
+
 def build(short_cls, name):
     config.output_file = f"{name}_silent"
     scene = short_cls()
@@ -1101,6 +1114,15 @@ def build(short_cls, name):
         track += AudioSegment.from_wav(seg_info(i)["wav"])  # 배속본 사용(화면 타이밍과 동일 소스)
         track += AudioSegment.silent(duration=int((GAP if k < len(segs) - 1 else 0.3) * 1000))
     track += AudioSegment.silent(duration=int(END_D * 1000))
+    # --- 불변식: 오디오 길이 >= 무음영상 길이 ---
+    # ffmpeg -shortest 는 둘 중 짧은 쪽에 맞춰 자른다. 장면이 프레임 양자화·hold 오차로
+    # 계획보다 길어지면 오디오가 더 짧아져 '엔딩 카드'가 통째로 잘려나간다.
+    # (2026-07-29 3편 실사고: 무음영상 42.73s vs 오디오 41.52s → 엔딩 '사료: © CERN' 카드
+    #  1.6s 중 0.4s만 남아 사실상 안 보임. rule5 §4 — 같은 부류 재발 방지로 기계 검사 승격.)
+    vsec = video_seconds(silent)
+    if vsec + 0.2 > len(track) / 1000.0:
+        track += AudioSegment.silent(duration=int((vsec + 0.2 - len(track) / 1000.0) * 1000))
+    assert len(track) / 1000.0 >= vsec, f"{name}: 오디오({len(track)/1000:.2f}s) < 영상({vsec:.2f}s)"
     bgm_path = os.path.join(OUT, f"{name}_bgm.wav")
     make_bgm(len(track) / 1000 + 0.5, bgm_path)
     bgm = AudioSegment.from_wav(bgm_path).apply_gain(-13)
