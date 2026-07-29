@@ -19,7 +19,10 @@
 | 틱톡·릴스 발행로(Buffer 계정) | publisher | 🚫 사용자 계정 생성 대기 |
 | 네이버·티스토리 반자동(Playwright) | publisher | ⏳ 설계 완료·구축 전(사용자 ToS 리스크 승인 필요) |
 | 유튜브 API 실업로드 검증 | publisher | ⏳ |
-| BGM: ACE-Step 1.5 파일럿 | tech-scout→audio | ⏳ 권장 1순위 |
+| **본편 BGM 도입 — 4편부터(사용자 결정 2026-07-29)** | audio-producer→asset-scout→counsel | 🔜 착수 예정. 실측 배경: 본편에 BGM 0(build_v2.py에 코드 없음), 쇼츠만 보유 → "쇼츠가 음질 좋다"의 절반이 이것. 절차: 무료·상업이용 음원 조달(유튜브 오디오 라이브러리·CC0·ACE-Step 자체 생성 중 택1) → 법무 심사 → 볼륨 기준(내레이션 대비 -18~-22dB 실측) → build_v2.py 반영. 제안서: refs/audio-bgm-proposal.md. 1~3편 소급은 나중 판단 |
+| BGM: ACE-Step 1.5 파일럿 | tech-scout→audio | ⏳ 위 도입 과업의 음원 후보 1안 |
+| **라우드니스 표준 -14 LUFS** | audio-producer | 🔄 3편부터 적용 중(현행 -22 LUFS = 유튜브 기준 8dB 미달 실측). 1·2편 소급 검토 대상 |
+| **내레이션 무음 다듬기(공백 21.5%)** | audio-producer | 🔄 3편 적용 중 — 유효 시 파이프라인 상시 승격(4편부터 자동) |
 | TTS 결선: Qwen3-TTS vs Chatterbox | tech-scout→audio | ⏳ |
 | 사료 복원 파이프라인 | tech-scout→asset-creator | ⏳ |
 | 캐글 계정(무료 GPU 2배) | 사용자 | ✅ 7/28 개설·전화인증·GPU 실사격 성공(kaggle_tts_v3.ipynb, 커밋 b19145a) |
