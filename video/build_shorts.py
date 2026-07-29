@@ -8,7 +8,7 @@
   python video/build_shorts.py <편번호>           # 시안(540x960, 15fps)
   python video/build_shorts.py <편번호> --full    # 완성(1080x1920, 30fps)
 출력: video/output/<편>_v2/shorts_A.mp4 (반전형), shorts_B.mp4 (요약형)
-지원 편: 01(아파넷 LO), 02(TCP/IP Flag Day)
+지원 편: 01(아파넷 LO), 02(TCP/IP Flag Day), 03(WWW 탄생)
 """
 import json
 import os
@@ -757,6 +757,336 @@ class Short02B(Short02Base):
                      10: [None, "400대", None]}}
 
 
+# ---------- 3편: WWW 탄생 — 'Vague but exciting' — 세로 장면 ----------
+
+class Short03Base(ShortBase):
+    """3편 세그 장면(세로 구도·다크). 본편 build_v2.Episode03 연출을 9:16으로 재구성.
+
+    실사 소재(자산 대장 refs/asset-ledger.md 실측 매핑):
+      seg0·4·5 = ep03_memo_vague_but_exciting.jpg (제안서 표지+센달 메모, © CERN)
+      seg3     = ep03_cern_computing_1980.jpg (CERN 전산센터 1980, © CERN)
+      seg11    = ep03_free_release_p1.jpg (1993 공개 성명서 표지, © CERN)
+    법무 조건: © CERN 소재는 장면 내 출처 칩 + 엔딩 카드 '사료: © CERN' 병기."""
+
+    def construct(self):
+        self.st = {}
+        super().construct()
+
+    def end_card(self):
+        # 기본 엔딩 + CERN 사료 크레딧 축약 1줄(법무 조건)
+        t = ktext("전체 이야기는 채널에서", fs=52).move_to(UP * 0.8)
+        btn = chip("구독", RED, 46).move_to(DOWN * 0.6)
+        src = Text("사료: © CERN", font=KFONT, font_size=26, color=GRAY).move_to(DOWN * 1.8)
+        cc = Text("© nous-zero", font=KFONT, font_size=26, color=GRAY).move_to(DOWN * 2.5)
+        self.play(FadeIn(t, shift=UP * 0.2), FadeIn(btn, scale=1.4),
+                  FadeIn(src), FadeIn(cc), run_time=0.5)
+        self.wait(END_D - 0.5)
+
+    def memo_closeup(self, height=2.4, pos=ORIGIN):
+        """메모 손글씨 클로즈업 — 표지 스캔 상단 22%를 잘라 쓴다(렌더 중간산출물)."""
+        src = os.path.join(ASSETS, "ep03_memo_vague_but_exciting.jpg")
+        dst = os.path.join(OUT, "media_shorts", "ep03_memo_closeup.jpg")
+        if not os.path.exists(dst) or os.path.getmtime(dst) < os.path.getmtime(src):
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            from PIL import Image
+            im = Image.open(src)
+            im.crop((0, 0, im.width, int(im.height * 0.22))).save(dst, quality=92)
+        img = ImageMobject(dst)
+        img.height = height
+        if img.width > 8.4:
+            img.scale_to_fit_width(8.4)
+        img.move_to(pos)
+        border = Rectangle(width=img.width + 0.1, height=img.height + 0.1)
+        border.set_stroke(WHITE, 5).move_to(img)
+        return Group(img, border)
+
+    def doc_card_dark(self, pos, w=4.4, h=3.2, nlines=5):
+        """회색 글줄 문서 카드(다크) — 하이퍼링크 연출용."""
+        win = RoundedRectangle(corner_radius=0.2, width=w, height=h)
+        win.set_stroke(GRAY, 3).set_fill("#101A30", 1).move_to(pos)
+        lines = VGroup()
+        left_x = win.get_left()[0] + 0.45
+        top_y = win.get_top()[1] - 0.55
+        for i in range(nlines):
+            ln_w = w - 0.9 - (0.8 if i % 3 == 2 else 0)
+            ln = Line(ORIGIN, RIGHT * ln_w).set_stroke("#4B5563", 5)
+            ln.move_to([left_x + ln_w / 2, top_y - i * 0.5, 0])
+            lines.add(ln)
+        return VGroup(win, lines)
+
+    def bubble(self, lines, pos, color=BLUE, fs=26):
+        txts = VGroup(*[Text(l, font=KFONT, font_size=fs, color=WHITE, weight="BOLD")
+                        for l in lines])
+        txts.arrange(DOWN, buff=0.14, aligned_edge=LEFT)
+        box = RoundedRectangle(corner_radius=0.22, width=txts.width + 0.6,
+                               height=txts.height + 0.5)
+        box.set_stroke(color, 4).set_fill("#101A30", 1)
+        txts.move_to(box)
+        return VGroup(box, txts).move_to(pos)
+
+    # --- 0: 1989 메모 — 낙서 세 단어 (실사: 제안서 표지) ---
+    def seg000(self, info):
+        def a0(d):
+            date = chip("1989 — 스위스 CERN", INK, 28).move_to(UP * 6.3)
+            ph = self.photo("ep03_memo_vague_but_exciting.jpg", height=5.2, pos=UP * 1.4)
+            cred = chip("메모 원본 — © CERN", INK, 20).next_to(ph, DOWN, buff=0.25)
+            self.st["memo"] = ph
+            t1 = max(0.3, min(0.5, d * 0.2))
+            self.play(FadeIn(date, shift=DOWN * 0.2), run_time=t1)
+            self.show(ph)
+            self.act(d - t1, FadeIn(cred), rt=0.4)
+
+        def a1(d):
+            # 손글씨 위치: 표지 스캔의 가로 52~77%·세로 상단 1~4% (육안 실측)
+            ph = self.st["memo"]
+            w, h = ph[0].width, ph[0].height
+            hl = RoundedRectangle(corner_radius=0.08, width=w * 0.30, height=h * 0.055)
+            hl.set_fill(AMBER, 0.4).set_stroke(AMBER, 3)
+            hl.move_to(ph[0].get_center() + RIGHT * w * 0.145 + UP * h * 0.472)
+            self.act(d, FadeIn(hl, scale=1.3))
+
+        def a2(d):
+            words = chip("Vague but exciting", AMBER, 36).move_to(DOWN * 3.2)
+            t1 = max(0.3, min(0.7, d * 0.35))
+            self.play(FadeIn(words, scale=1.3), run_time=t1)
+            t2 = max(0.3, min(0.5, d * 0.2))
+            self.play(Flash(words.get_center(), color=AMBER, flash_radius=2.0), run_time=t2)
+            self.hold(d - t1 - t2)
+
+        def a3(d):
+            stamp = chip("웹의 탄생을 승인한 도장", RED, 30).rotate(0.12)
+            stamp.move_to(self.st["memo"][1].get_corner(DR) + UL * 1.2)
+            t1 = max(0.3, min(0.7, d * 0.4))
+            self.play(FadeIn(stamp, scale=1.6), run_time=t1)
+            t2 = max(0.3, min(0.5, d * 0.2))
+            self.play(Flash(stamp.get_center(), color=RED, flash_radius=1.6), run_time=t2)
+            self.hold(d - t1 - t2)
+
+        self.beats(info, [a0, a1, a2, a3])
+
+    # --- 3: 지식 소실 — 신참·고참 대화 (실사: CERN 전산센터 1980) ---
+    def seg003(self, info):
+        def a0(d):
+            ph = self.photo("ep03_cern_computing_1980.jpg", height=3.0, pos=UP * 3.3)
+            cred = chip("CERN 전산센터 1980 — © CERN", INK, 18).next_to(ph, DOWN, buff=0.2)
+            who1 = chip("신참", BLUE, 24).move_to(LEFT * 3.4 + UP * 0.9)
+            self.st["who1"] = who1
+            self.show(ph)
+            self.act(d, FadeIn(cred), FadeIn(who1, scale=1.2), rt=0.5)
+
+        def a1(d):
+            b1 = self.bubble(["3년 전 그 실험 자료,", "어디서 봅니까?"],
+                             RIGHT * 1.0 + UP * 0.4, BLUE)
+            self.act(d, FadeIn(b1, shift=UP * 0.2))
+
+        def a2(d):
+            who2 = chip("고참", INK, 24).move_to(LEFT * 3.4 + DOWN * 1.0)
+            self.act(d, FadeIn(who2, scale=1.2))
+
+        def a3(d):
+            b2 = self.bubble(["담당자는 작년에 떠났고,", "자료는 그 사람 컴퓨터에만.",
+                              "시스템이 달라 열어도 못 읽어."],
+                             RIGHT * 0.6 + DOWN * 1.9, GRAY, 24)
+            self.act(d, FadeIn(b2, shift=UP * 0.2))
+
+        def a4(d):
+            phrase = ktext("사람이 떠나면, 지식도 떠난다", fs=44, color=RED)
+            phrase.move_to(DOWN * 3.5)
+            self.act(d, FadeIn(phrase, scale=1.2))
+
+        def a5(d):
+            note = chip("대화는 각색 — 문제는 실제", GRAY, 22).move_to(DOWN * 4.3)
+            self.act(d, FadeIn(note, shift=UP * 0.15))
+
+        self.beats(info, [a0, a1, a2, a3, a4, a5])
+
+    # --- 4: 1989 제안서 — 팀 버너스리 (실사: 제안서 표지 재사용) ---
+    def seg004(self, info):
+        def a0(d):
+            yr = chip("1989", INK, 28).move_to(UP * 6.3)
+            ph = self.photo("ep03_memo_vague_but_exciting.jpg", height=4.6, pos=UP * 1.9)
+            cred = chip("제안서 표지 — © CERN", INK, 20).next_to(ph, DOWN, buff=0.25)
+            self.st["prop"] = ph
+            t1 = max(0.3, min(0.5, d * 0.2))
+            self.play(FadeIn(yr, shift=DOWN * 0.2), run_time=t1)
+            self.show(ph)
+            self.act(d - t1, FadeIn(cred), rt=0.4)
+
+        def a1(d):
+            # 인쇄 제목 위치: 세로 상단 21% 지점(육안 실측)
+            ph = self.st["prop"]
+            w, h = ph[0].width, ph[0].height
+            hl = RoundedRectangle(corner_radius=0.08, width=w * 0.62, height=h * 0.05)
+            hl.set_fill(AMBER, 0.35).set_stroke(AMBER, 3)
+            hl.move_to(ph[0].get_center() + UP * h * 0.285)
+            self.act(d, FadeIn(hl, scale=1.2))
+
+        def a2(d):
+            t1txt = Text("Information Management:", font=MONO, font_size=34,
+                         color=WHITE, weight="BOLD")
+            t2txt = Text("A Proposal", font=MONO, font_size=34, color=WHITE, weight="BOLD")
+            t3txt = ktext("정보 관리, 하나의 제안", fs=30, color=GRAY)
+            title = VGroup(t1txt, t2txt, t3txt).arrange(DOWN, buff=0.18).move_to(DOWN * 2.2)
+            if title.width > 8.0:
+                title.scale_to_fit_width(8.0)
+            self.act(d, FadeIn(title, shift=UP * 0.2))
+
+        def a3(d):
+            name = chip("팀 버너스리", BLUE, 40).move_to(DOWN * 4.0)
+            t1 = max(0.3, min(0.7, d * 0.4))
+            self.play(FadeIn(name, scale=1.35), run_time=t1)
+            t2 = max(0.3, min(0.5, d * 0.2))
+            self.play(Flash(name.get_center(), color=BLUE, flash_radius=1.6), run_time=t2)
+            self.hold(d - t1 - t2)
+
+        self.beats(info, [a0, a1, a2, a3])
+
+    # --- 5: 메모 클로즈업 — 실물이 남은 실화 (실사: 표지 상단 크롭) ---
+    def seg005(self, info):
+        def a0(d):
+            boss = chip("상사 마이크 센달", INK, 26).move_to(UP * 6.3)
+            cu = self.memo_closeup(height=2.4, pos=UP * 3.3)
+            cred = chip("© CERN", INK, 18).next_to(cu, DOWN, buff=0.2)
+            self.st["cu"] = cu
+            t1 = max(0.3, min(0.5, d * 0.2))
+            self.play(FadeIn(boss, shift=DOWN * 0.2), run_time=t1)
+            self.show(cu)
+            self.act(d - t1, FadeIn(cred), rt=0.4)
+
+        def a1(d):
+            # 크롭 내 손글씨: 가로 52~77%·세로 5~18% (원본 실측을 크롭 좌표로 환산)
+            cu = self.st["cu"]
+            w, h = cu[0].width, cu[0].height
+            hl = RoundedRectangle(corner_radius=0.08, width=w * 0.28, height=h * 0.30)
+            hl.set_fill(AMBER, 0.35).set_stroke(AMBER, 3)
+            hl.move_to(cu[0].get_center() + RIGHT * w * 0.145 + UP * h * 0.385)
+            words = chip("Vague but exciting", AMBER, 36).move_to(UP * 0.7)
+            t1 = max(0.3, min(0.6, d * 0.3))
+            self.play(FadeIn(hl, scale=1.3), run_time=t1)
+            t2 = max(0.3, min(0.6, d * 0.3))
+            self.play(FadeIn(words, scale=1.3), run_time=t2)
+            self.hold(d - t1 - t2)
+
+        def a2(d):
+            ok = chip("정식 결재 대신 — 조용히 해볼 시간", BLUE, 28).move_to(DOWN * 1.6)
+            self.act(d, FadeIn(ok, shift=UP * 0.2))
+
+        def a3(d):
+            real = chip("각색 아님 — 실물이 남은 실화", RED, 32).rotate(0.1)
+            real.move_to(DOWN * 3.3)
+            t1 = max(0.3, min(0.7, d * 0.4))
+            self.play(FadeIn(real, scale=1.5), run_time=t1)
+            t2 = max(0.3, min(0.5, d * 0.2))
+            self.play(Flash(real.get_center(), color=RED, flash_radius=1.8), run_time=t2)
+            self.hold(d - t1 - t2)
+
+        self.beats(info, [a0, a1, a2, a3])
+
+    # --- 6: 하이퍼링크 — 누르면 건너뛴다 (도형) ---
+    def seg006(self, info):
+        def a0(d):
+            head = chip("핵심 아이디어 — 딱 한 줄", INK, 28).move_to(UP * 6.3)
+            docA = self.doc_card_dark(UP * 2.8)
+            word = RoundedRectangle(corner_radius=0.08, width=1.4, height=0.5)
+            word.set_stroke(BLUE, 4).set_fill("#14264a", 1)
+            word.move_to(docA[1][2].get_center() + UP * 0.02)
+            wul = Line(word.get_corner(DL) + DOWN * 0.07,
+                       word.get_corner(DR) + DOWN * 0.07).set_stroke(BLUE, 5)
+            self.st["docA"] = docA
+            self.st["word"] = VGroup(word, wul)
+            self.act(d, FadeIn(head, shift=DOWN * 0.2), Create(docA[0]),
+                     LaggedStart(*[Create(l) for l in docA[1]], lag_ratio=0.08),
+                     FadeIn(self.st["word"]), rt=min(1.6, d * 0.6))
+
+        def a1(d):
+            word = self.st["word"]
+            cursor = Triangle().scale(0.18).rotate(-PI / 5)
+            cursor.set_fill(WHITE, 1).set_stroke(WHITE, 2)
+            cursor.move_to(self.st["docA"][0].get_corner(DR) + UL * 0.5)
+            t1 = max(0.3, min(0.5, d * 0.2))
+            self.play(FadeIn(cursor, scale=1.3), run_time=t1)
+            t2 = max(0.3, min(0.8, d * 0.25))
+            self.play(cursor.animate.move_to(word.get_center() + DR * 0.12), run_time=t2)
+            t3 = max(0.3, min(0.5, d * 0.15))
+            self.play(Flash(word.get_center(), color=BLUE, flash_radius=1.0), run_time=t3)
+            docB = self.doc_card_dark(DOWN * 2.4, nlines=4)
+            jump = DashedLine(word.get_center() + DOWN * 0.3,
+                              docB[0].get_top() + UP * 0.12).set_stroke(BLUE, 6)
+            self.st["jump"] = jump
+            t4 = max(0.4, min(1.0, d * 0.3))
+            self.play(Create(jump), FadeIn(docB, shift=UP * 0.2), run_time=t4)
+            self.hold(d - t1 - t2 - t3 - t4)
+
+        def a2(d):
+            name = chip("하이퍼링크", BLUE, 48).move_to(UP * 0.2 + LEFT * 1.6)
+            t1 = max(0.3, min(0.8, d * 0.4))
+            self.play(FadeIn(name, scale=1.4), run_time=t1)
+            t2 = max(0.3, min(0.6, d * 0.25))
+            self.play(Indicate(self.st["jump"], color=BLUE_L, scale_factor=1.05), run_time=t2)
+            self.hold(d - t1 - t2)
+
+        self.beats(info, [a0, a1, a2])
+
+    # --- 11: 1993.4.30 — 웹을 공짜로 풀다 (실사: 공개 성명서) ---
+    def seg011(self, info):
+        def a0(d):
+            date = chip("1993. 4. 30", RED, 32).move_to(UP * 6.3)
+            ph = self.photo("ep03_free_release_p1.jpg", height=4.8, pos=UP * 1.6)
+            cred = chip("공개 성명서 원본 — © CERN", INK, 20).next_to(ph, DOWN, buff=0.25)
+            self.st["free"] = ph
+            t1 = max(0.3, min(0.5, d * 0.2))
+            self.play(FadeIn(date, shift=DOWN * 0.2), run_time=t1)
+            self.show(ph)
+            self.act(d - t1, FadeIn(cred), rt=0.4)
+
+        def a1(d):
+            # 성명서 제목 블록: 세로 상단 24~27% (육안 실측)
+            ph = self.st["free"]
+            w, h = ph[0].width, ph[0].height
+            hl = RoundedRectangle(corner_radius=0.08, width=w * 0.86, height=h * 0.06)
+            hl.set_fill(AMBER, 0.35).set_stroke(AMBER, 3)
+            hl.move_to(ph[0].get_center() + UP * h * 0.245)
+            tag = chip("특허료 없이, 누구나", BLUE, 32).move_to(DOWN * 2.9)
+            t1 = max(0.3, min(0.6, d * 0.3))
+            self.play(FadeIn(hl, scale=1.2), run_time=t1)
+            t2 = max(0.3, min(0.6, d * 0.3))
+            self.play(FadeIn(tag, scale=1.25), run_time=t2)
+            self.hold(d - t1 - t2)
+
+        def a2(d):
+            stamp = chip("무료 — 영원히", BLUE, 40).rotate(0.2)
+            stamp.move_to(self.st["free"][1].get_corner(DR) + UL * 1.2)
+            t1 = max(0.3, min(0.7, d * 0.4))
+            self.play(FadeIn(stamp, scale=1.7), run_time=t1)
+            t2 = max(0.3, min(0.5, d * 0.2))
+            self.play(Flash(stamp.get_center(), color=BLUE, flash_radius=1.8), run_time=t2)
+            self.hold(d - t1 - t2)
+
+        self.beats(info, [a0, a1, a2])
+
+
+class Short03A(Short03Base):
+    """반전형(~32초): 메모 실물 중심 — 낙서 세 단어가 웹을 승인했다."""
+    SPEC = {"segs": [0, 4, 5],
+            "hook": ["웹의 탄생 승인 =", "낙서 세 단어"],
+            "pops": {0: [None, "세 단어", None, None],
+                     4: ["제안서 한 장", None, None, None],
+                     5: [None, None, None, "실화"]}}
+
+
+class Short03B(Short03Base):
+    """요약형(~41초): 지식 소실 → 제안서 → 하이퍼링크 → 공짜 개방.
+
+    기획 확정안의 후보(3·4·6~7·11~12) 중 40초 제약(제목 '40초 요약')에 맞춰
+    실측 합산으로 3·4·6·11 채택 — 7(3종 세트)·12(오늘의 웹)는 길이 초과로 제외."""
+    SPEC = {"segs": [3, 4, 6, 11],
+            "hook": ["웹은 원래", "유료가 될 뻔했다"],
+            "pops": {3: [None, None, None, "열어도 못 읽어", "지식도 떠난다", None],
+                     4: ["제안서 한 장", None, None, None],
+                     6: [None, "건너뛰기", None],
+                     11: [None, "특허료 없이", "공짜"]}}
+
+
 def build(short_cls, name):
     config.output_file = f"{name}_silent"
     scene = short_cls()
@@ -787,7 +1117,8 @@ def build(short_cls, name):
 
 
 SHORTS = {"01": ((ShortA, "shorts_A"), (ShortB, "shorts_B")),
-          "02": ((Short02A, "shorts_A"), (Short02B, "shorts_B"))}
+          "02": ((Short02A, "shorts_A"), (Short02B, "shorts_B")),
+          "03": ((Short03A, "shorts_A"), (Short03B, "shorts_B"))}
 
 if __name__ == "__main__":
     if EP not in SHORTS:
