@@ -1453,6 +1453,705 @@ class Episode02(EpisodeBase):
         self.run_beats(S, [a0, a1, a2, a3])
 
 
+EP03_ASSET_EXTS = ("jpg", "jpeg", "png", "webp")
+
+
+def find_asset(stem):
+    """소재 파일 탐색 — asset-scout 저장 확장자가 미정이므로 4종 순회."""
+    for ext in EP03_ASSET_EXTS:
+        p = os.path.join(ASSETS, f"{stem}.{ext}")
+        if os.path.exists(p):
+            return p
+    return None
+
+
+class Episode03(EpisodeBase):
+    """3편: WWW의 탄생 — 1989 'Vague but exciting'. 하이브리드 v3(사건=실사 켄 번즈, 원리=도형).
+
+    실사 9장면: memo_three_words · cern_intro · knowledge_loss · proposal
+    · vague_memo(0번 소재 클로즈업 재사용) · next_server · go_public · free_release · next.
+    원리 장면(recap_road, hyperlink, web_trio, postal_system, law_plain, today_web*)은 도형.
+    (*today_web 은 소재 있으면 실사, 없으면 그래픽 몽타주 — 플레이스홀더 아님.)
+    소재 부재 시 PLACEHOLDER 카드(장면명 표기)로 렌더가 소재 지연에 볼모 잡히지 않게 한다."""
+    CLEAR_AFTER = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13}
+    PLACEHOLDERS_USED = []  # 렌더에 실제 쓰인 플레이스홀더 장면명 (보고용)
+
+    def intro(self):
+        title = mtext("WWW", fs=110, color=INK).move_to(UP * 0.9)
+        sub = ktext("모호하지만 흥미로움 — 웹의 탄생", fs=40, color=GRAY).next_to(title, DOWN, buff=0.5)
+        num = chip("#03", BLUE, 30).to_corner(UL, buff=0.6)
+        cc = Text("© nous-zero", font=KFONT, font_size=22, color=LGRAY).to_corner(DR, buff=0.45)
+        self.play(FadeIn(title, scale=1.15), FadeIn(num), run_time=0.9)
+        self.play(FadeIn(sub, shift=UP * 0.2), FadeIn(cc), run_time=0.7)
+        self.wait(INTRO_D - 0.9 - 0.7 - 0.6)
+        self.play(*[FadeOut(m) for m in (title, sub, num, cc)], run_time=0.6)
+
+    # --- 공용 소품 ---
+    def ep_photo(self, scene_name, height=5.0, pos=ORIGIN, framed=True):
+        """실사 사료 로드 — 부재 시 장면명이 박힌 PLACEHOLDER 카드. (Group, is_placeholder) 반환."""
+        p = find_asset(f"ep03_{scene_name}")
+        if p:
+            return self.photo(os.path.basename(p), height, pos, framed), False
+        if scene_name not in Episode03.PLACEHOLDERS_USED:
+            Episode03.PLACEHOLDERS_USED.append(scene_name)
+        card = RoundedRectangle(corner_radius=0.2, width=height * 1.5, height=height)
+        card.set_stroke(LGRAY, 4).set_fill("#E5E7EB", 1).move_to(pos)
+        t1 = mtext("PLACEHOLDER", fs=40, color=GRAY)
+        t2 = ktext(f"ep03_{scene_name}", 30, GRAY)
+        tg = VGroup(t1, t2).arrange(DOWN, buff=0.28)
+        if tg.width > card.width - 0.5:
+            tg.scale_to_fit_width(card.width - 0.5)
+        tg.move_to(card)
+        return Group(card, tg), True
+
+    def envelope_icon(self, w=2.0, h=1.3, color=BLUE):
+        body = RoundedRectangle(corner_radius=0.08, width=w, height=h)
+        body.set_stroke(color, 4).set_fill(WHITE, 1)
+        flap = VGroup(Line(body.get_corner(UL), body.get_center() + UP * 0.06 * (h / 1.3)),
+                      Line(body.get_corner(UR), body.get_center() + UP * 0.06 * (h / 1.3)))
+        flap.set_stroke(color, 4)
+        return VGroup(body, flap)
+
+    def speech_bubble(self, lines, pos, color=INK, fs=24, min_w=3.6):
+        txts = VGroup(*[ktext(l, fs, INK) for l in lines])
+        txts.arrange(DOWN, buff=0.13, aligned_edge=LEFT)
+        box = RoundedRectangle(corner_radius=0.22,
+                               width=max(min_w, txts.width + 0.6),
+                               height=txts.height + 0.55)
+        box.set_stroke(color, 3).set_fill(WHITE, 1)
+        txts.move_to(box)
+        return VGroup(box, txts).move_to(pos)
+
+    def doc_card(self, pos, w=4.2, h=4.8, nlines=7):
+        """회색 글줄만 있는 문서 카드 — 초기 웹/하이퍼링크 연출용."""
+        win = RoundedRectangle(corner_radius=0.2, width=w, height=h)
+        win.set_stroke(INK, 4).set_fill(PAPER, 1).move_to(pos)
+        lines = VGroup()
+        left_x = win.get_left()[0] + 0.5
+        top_y = win.get_top()[1] - 0.65
+        for i in range(nlines):
+            ln_w = w - 1.0 - (0.9 if i % 3 == 2 else 0)
+            ln = Line(ORIGIN, RIGHT * ln_w).set_stroke(LGRAY, 5)
+            ln.move_to([left_x + ln_w / 2, top_y - i * 0.55, 0])
+            lines.add(ln)
+        return VGroup(win, lines)
+
+    # --- 0: 1989 메모 — "Vague but exciting" (실사) ---
+    def seg00(self, S):
+        def a0(d):
+            date = chip("1989 — 스위스 CERN", INK, 26).to_corner(UL, buff=0.5)
+            ph, _ = self.ep_photo("memo_three_words", height=5.0, pos=DOWN * 0.15)
+            self.st["memo"] = ph
+            t1 = max(0.3, min(0.7, d * 0.3))
+            self.play(FadeIn(date, shift=DOWN * 0.2), run_time=0.3)
+            self.show_photo(ph, t1)
+            self.ken_burns(ph, d - t1 - 0.3, zoom=1.05)
+
+        def a1(d):
+            self.ken_burns(self.st["memo"], d, zoom=1.05, drift=DOWN * 0.1)
+
+        def a2(d):
+            ph = self.st["memo"]
+            hl = RoundedRectangle(corner_radius=0.08, width=3.4, height=0.7)
+            hl.set_fill(AMBER, 0.4).set_stroke(AMBER, 3)
+            hl.move_to(ph[0].get_center() + UP * 1.3)
+            words = chip("Vague but exciting", AMBER, 28)
+            words.next_to(ph, RIGHT, buff=0.4).shift(UP * 1.2)
+            if words.get_right()[0] > 6.9:
+                words.next_to(ph, UP, buff=0.3)
+            t1 = max(0.3, min(0.8, d * 0.35))
+            self.play(FadeIn(hl, scale=1.2), run_time=t1)
+            t2 = max(0.3, min(0.7, d * 0.3))
+            self.play(FadeIn(words, scale=1.25), run_time=t2)
+            self.hold(d - t1 - t2)
+
+        def a3(d):
+            stamp = chip("웹의 탄생을 승인한 도장", RED, 26).rotate(0.12)
+            stamp.move_to(self.st["memo"][0].get_corner(DR) + UL * 1.1)
+            t1 = max(0.3, min(0.7, d * 0.4))
+            self.play(FadeIn(stamp, scale=1.6), run_time=t1)
+            self.play(Flash(stamp.get_center(), color=RED, flash_radius=1.4),
+                      run_time=min(0.5, max(0.3, d * 0.2)))
+            self.hold(d - t1 - min(0.5, max(0.3, d * 0.2)))
+
+        self.run_beats(S, [a0, a1, a2, a3])
+
+    # --- 1: 지난 편 요약 — 도로는 깔렸는데 짐이 없다 (도형) ---
+    def seg01(self, S):
+        def a0(d):
+            nodes, edges, _ = build_mesh(scale=0.62, shift=(0, 0.9))
+            tag = chip("지난 편 — 인터넷 도로망", INK, 24).to_corner(UL, buff=0.5)
+            env = self.envelope_icon(1.6, 1.05)
+            env.move_to(DOWN * 1.9 + LEFT * 2.2)
+            etag = chip("TCP/IP — 공통 언어", BLUE, 22).next_to(env, RIGHT, buff=0.45)
+            self.st["mesh"] = VGroup(edges, nodes)
+            self.st["env1"] = env
+            self.act(d, Create(edges), FadeIn(nodes), FadeIn(tag),
+                     FadeIn(env, scale=1.15), FadeIn(etag), rt=min(2.0, d * 0.7))
+
+        def a1(d):
+            q = ktext("그런데?", 60, RED, bold=True).move_to(UP * 0.9)
+            self.st["q1"] = q
+            self.act(d, FadeIn(q, scale=1.3), Wiggle(self.st["mesh"], scale_value=1.02))
+
+        def a2(d):
+            env = self.st["env1"]
+            cargo = DashedVMobject(
+                RoundedRectangle(corner_radius=0.08, width=0.8, height=0.5),
+                num_dashes=14).set_stroke(RED, 3)
+            cargo.move_to(env[0].get_center())
+            none = chip("실어 나를 짐이 없다", RED, 26).move_to(DOWN * 3.0)
+            t1 = max(0.3, min(0.7, d * 0.3))
+            self.play(FadeOut(self.st.pop("q1")), FadeIn(cargo, scale=1.3), run_time=t1)
+            t2 = max(0.3, min(0.8, d * 0.3))
+            self.play(FadeIn(none, shift=UP * 0.2),
+                      self.st["mesh"].animate.set_opacity(0.35), run_time=t2)
+            self.hold(d - t1 - t2)
+
+        self.run_beats(S, [a0, a1, a2])
+
+    # --- 2: CERN — 무대 소개 (실사) ---
+    def seg02(self, S):
+        def a0(d):
+            place = chip("스위스 제네바 — CERN", INK, 26).to_corner(UL, buff=0.5)
+            ph, _ = self.ep_photo("cern_intro", height=5.2, pos=DOWN * 0.1)
+            self.st["cern"] = ph
+            self.play(FadeIn(place, shift=DOWN * 0.2), run_time=0.3)
+            t1 = max(0.3, min(0.7, d * 0.3))
+            self.show_photo(ph, t1)
+            self.ken_burns(ph, d - t1 - 0.3, zoom=1.06)
+
+        def a1(d):
+            n = chip("연구자 수천 명 — 세계 최대 실험 장비", GRAY, 20)
+            n.next_to(self.st["cern"], DOWN, buff=0.25)
+            t1 = max(0.3, min(0.6, d * 0.25))
+            self.play(FadeIn(n, shift=UP * 0.15), run_time=t1)
+            self.ken_burns(self.st["cern"], d - t1, zoom=1.04, drift=UP * 0.1)
+
+        def a2(d):
+            q = chip("진짜 고질병은 물리학이 아니었다", RED, 26).move_to(UP * 3.1)
+            self.act(d, FadeIn(q, scale=1.2))
+
+        self.run_beats(S, [a0, a1, a2])
+
+    # --- 3: 지식 손실 — 신참·고참 대화 (실사 + 말풍선) ---
+    def seg03(self, S):
+        def a0(d):
+            ph, _ = self.ep_photo("knowledge_loss", height=3.8, pos=LEFT * 3.7 + UP * 0.7)
+            who1 = chip("신참", BLUE, 22).move_to(RIGHT * 0.6 + UP * 2.75)
+            self.st["kl"] = ph
+            self.st["who1"] = who1
+            t1 = max(0.3, min(0.7, d * 0.35))
+            self.show_photo(ph, t1)
+            t2 = max(0.3, min(0.5, d * 0.2))
+            self.play(FadeIn(who1, scale=1.2), run_time=t2)
+            self.hold(d - t1 - t2)
+
+        def a1(d):
+            b1 = self.speech_bubble(["3년 전 그 실험 자료,", "어디서 봅니까?"],
+                                    RIGHT * 3.2 + UP * 1.9, BLUE, 24)
+            self.st["b1"] = b1
+            self.act(d, FadeIn(b1, shift=UP * 0.2))
+
+        def a2(d):
+            who2 = chip("고참", INK, 22).move_to(RIGHT * 0.6 + UP * 0.35)
+            self.act(d, FadeIn(who2, scale=1.2))
+
+        def a3(d):
+            b2 = self.speech_bubble(["담당자는 작년에 떠났고,", "자료는 그 사람 컴퓨터에만.",
+                                     "시스템이 달라 열어도 못 읽어."],
+                                    RIGHT * 3.2 + DOWN * 0.7, INK, 22)
+            self.act(d, FadeIn(b2, shift=UP * 0.2))
+
+        def a4(d):
+            phrase = ktext("사람이 떠나면, 지식도 떠난다", 36, RED, bold=True)
+            phrase.move_to(DOWN * 2.5)
+            ul = Underline(phrase, color=RED).set_stroke(RED, 6)
+            self.act(d, FadeIn(phrase, scale=1.15), Create(ul), rt=min(1.2, d * 0.55))
+
+        def a5(d):
+            note = chip("대화는 각색 — 문제는 실제", GRAY, 20).move_to(DOWN * 3.25)
+            self.act(d, FadeIn(note, shift=UP * 0.15))
+
+        self.run_beats(S, [a0, a1, a2, a3, a4, a5])
+
+    # --- 4: 1989 제안서 — 팀 버너스리 (실사) ---
+    def seg04(self, S):
+        def a0(d):
+            yr = chip("1989", INK, 28).to_corner(UL, buff=0.5)
+            ph, _ = self.ep_photo("proposal", height=4.8, pos=LEFT * 2.6 + UP * 0.15)
+            self.st["prop"] = ph
+            self.play(FadeIn(yr, shift=DOWN * 0.2), run_time=0.3)
+            t1 = max(0.3, min(0.7, d * 0.3))
+            self.show_photo(ph, t1)
+            self.ken_burns(ph, d - t1 - 0.3, zoom=1.05)
+
+        def a1(d):
+            self.ken_burns(self.st["prop"], d, zoom=1.04, drift=UP * 0.1)
+
+        def a2(d):
+            t1txt = mtext("Information Management:", fs=28, color=INK)
+            t2txt = mtext("A Proposal", fs=28, color=INK)
+            t3txt = ktext("정보 관리, 하나의 제안", 26, GRAY)
+            title = VGroup(t1txt, t2txt, t3txt).arrange(DOWN, buff=0.18)
+            title.move_to(RIGHT * 3.6 + UP * 1.2)
+            if title.width > 5.6:
+                title.scale_to_fit_width(5.6)
+            self.act(d, FadeIn(title, shift=UP * 0.2))
+
+        def a3(d):
+            name = chip("팀 버너스리", BLUE, 30).move_to(RIGHT * 3.6 + DOWN * 0.8)
+            t1 = max(0.3, min(0.8, d * 0.4))
+            self.play(FadeIn(name, scale=1.35), run_time=t1)
+            self.play(Flash(name.get_center(), color=BLUE, flash_radius=1.5),
+                      run_time=min(0.5, max(0.3, d * 0.2)))
+            self.hold(d - t1 - min(0.5, max(0.3, d * 0.2)))
+
+        self.run_beats(S, [a0, a1, a2, a3])
+
+    # --- 5: 메모 클로즈업 — 실물이 남은 실화 (0번 소재 재사용·줌인) ---
+    def seg05(self, S):
+        def a0(d):
+            ph, _ = self.ep_photo("memo_three_words", height=6.0, pos=DOWN * 0.1)
+            boss = chip("상사 마이크 센달", GRAY, 22).to_corner(UL, buff=0.5)
+            self.st["memo2"] = ph
+            t1 = max(0.4, min(0.9, d * 0.35))
+            self.show_photo(ph, t1)
+            self.play(FadeIn(boss), run_time=0.3)
+            self.ken_burns(ph, d - t1 - 0.3, zoom=1.06)
+
+        def a1(d):
+            ph = self.st["memo2"]
+            hl = RoundedRectangle(corner_radius=0.08, width=3.8, height=0.8)
+            hl.set_fill(AMBER, 0.4).set_stroke(AMBER, 3)
+            hl.move_to(ph[0].get_center() + UP * 1.5)
+            words = chip("Vague but exciting", AMBER, 30).move_to(UP * 3.15)
+            t1 = max(0.3, min(0.7, d * 0.3))
+            self.play(FadeIn(hl, scale=1.2), run_time=t1)
+            t2 = max(0.3, min(0.7, d * 0.3))
+            self.play(FadeIn(words, scale=1.25), run_time=t2)
+            self.hold(d - t1 - t2)
+
+        def a2(d):
+            ok = chip("정식 결재 대신 — 조용한 실험 시간", INK, 24).move_to(DOWN * 3.0)
+            self.act(d, FadeIn(ok, shift=UP * 0.2))
+
+        def a3(d):
+            real = chip("각색 아님 — 실물이 남아 있는 실화", RED, 24).rotate(0.1)
+            real.move_to(self.st["memo2"][0].get_corner(DR) + UL * 1.2)
+            t1 = max(0.3, min(0.7, d * 0.35))
+            self.play(FadeIn(real, scale=1.4), run_time=t1)
+            self.ken_burns(self.st["memo2"], d - t1, zoom=1.08)
+
+        self.run_beats(S, [a0, a1, a2, a3])
+
+    # --- 6: 하이퍼링크 — 단어를 누르면 건너뛴다 (도형) ---
+    def seg06(self, S):
+        def a0(d):
+            head = chip("핵심 아이디어 — 딱 한 줄", INK, 26).move_to(UP * 3.2)
+            docA = self.doc_card(LEFT * 3.5 + DOWN * 0.3)
+            word = RoundedRectangle(corner_radius=0.08, width=1.35, height=0.45)
+            word.set_stroke(BLUE, 3).set_fill("#DBEAFE", 1)
+            word.move_to(docA[1][2].get_center() + UP * 0.02)
+            wul = Line(word.get_corner(DL) + DOWN * 0.06,
+                       word.get_corner(DR) + DOWN * 0.06).set_stroke(BLUE, 4)
+            self.st["docA"] = docA
+            self.st["word"] = VGroup(word, wul)
+            self.act(d, FadeIn(head, shift=DOWN * 0.2), Create(docA[0]),
+                     LaggedStart(*[Create(l) for l in docA[1]], lag_ratio=0.08),
+                     FadeIn(self.st["word"]), rt=min(2.0, d * 0.7))
+
+        def a1(d):
+            word = self.st["word"]
+            cursor = Triangle().scale(0.16).rotate(-PI / 5)
+            cursor.set_fill(INK, 1).set_stroke(INK, 2)
+            cursor.move_to(self.st["docA"][0].get_corner(DR) + UL * 0.6)
+            t1 = max(0.3, min(0.6, d * 0.2))
+            self.play(FadeIn(cursor, scale=1.3), run_time=t1)
+            t2 = max(0.4, min(0.9, d * 0.25))
+            self.play(cursor.animate.move_to(word.get_center() + DR * 0.12), run_time=t2)
+            t3 = min(0.5, max(0.3, d * 0.15))
+            self.play(Flash(word.get_center(), color=BLUE, flash_radius=1.0), run_time=t3)
+            docB = self.doc_card(RIGHT * 3.5 + DOWN * 0.3, nlines=6)
+            arc = ArcBetweenPoints(word.get_right() + RIGHT * 0.1,
+                                   docB[0].get_top() + UP * 0.15, angle=-1.1)
+            arc.set_stroke(BLUE, 5)
+            self.st["arc"] = arc
+            t4 = max(0.5, min(1.2, d * 0.3))
+            self.play(Create(arc), FadeIn(docB, shift=UP * 0.2), run_time=t4)
+            self.hold(d - t1 - t2 - t3 - t4)
+
+        def a2(d):
+            name = chip("하이퍼링크", BLUE, 38).move_to(UP * 2.0)
+            t1 = max(0.4, min(0.9, d * 0.4))
+            self.play(FadeIn(name, scale=1.4), run_time=t1)
+            t2 = min(0.6, max(0.3, d * 0.25))
+            self.play(Indicate(self.st["arc"], color=BLUE, scale_factor=1.05), run_time=t2)
+            self.hold(d - t1 - t2)
+
+        self.run_beats(S, [a0, a1, a2])
+
+    # --- 7: 3요소 세트 — HTML/URL/HTTP 우편 비유 (도형) ---
+    def trio_card(self, head, sub_label, color, pos, icon):
+        b = RoundedRectangle(corner_radius=0.22, width=3.9, height=4.3)
+        b.set_stroke(color, 4).set_fill(WHITE, 1).move_to(pos)
+        h = mtext(head, fs=40, color=color).move_to(b.get_top() + DOWN * 0.55)
+        s = ktext(sub_label, 26, GRAY).next_to(h, DOWN, buff=0.2)
+        icon.move_to(b.get_center() + DOWN * 0.85)
+        return VGroup(b, h, s, icon)
+
+    def seg07(self, S):
+        def a0(d):
+            head = chip("발명 세 개 — 한 세트", INK, 28).move_to(UP * 3.2)
+            self.act(d, FadeIn(head, shift=DOWN * 0.2))
+
+        def a1(d):
+            paper = Rectangle(width=1.5, height=2.0).set_stroke(INK, 3).set_fill(WHITE, 1)
+            plines = VGroup(*[Line(ORIGIN, RIGHT * (1.0 - (0.3 if i == 3 else 0)))
+                              .set_stroke(LGRAY, 4)
+                              .move_to(paper.get_top() + DOWN * (0.4 + i * 0.35)
+                                       + LEFT * (0.15 if i == 3 else 0))
+                              for i in range(4)])
+            icon = VGroup(paper, plines)
+            card = self.trio_card("HTML", "문서 쓰는 공통 양식", BLUE,
+                                  LEFT * 4.3 + DOWN * 0.4, icon)
+            self.st["c_html"] = card
+            self.act(d, FadeIn(card, scale=1.08), rt=min(1.2, d * 0.5))
+
+        def a2(d):
+            env = self.envelope_icon(1.7, 1.1, AMBER)
+            addr = VGroup(*[Line(ORIGIN, RIGHT * 0.8).set_stroke(GRAY, 3)
+                            for _ in range(2)]).arrange(DOWN, buff=0.14)
+            addr.move_to(env[0].get_center() + DOWN * 0.18)
+            icon = VGroup(env, addr)
+            card = self.trio_card("URL", "문서마다 고유 주소", AMBER,
+                                  DOWN * 0.4, icon)
+            self.st["c_url"] = card
+            self.act(d, FadeIn(card, scale=1.08), rt=min(1.2, d * 0.5))
+
+        def a3(d):
+            a = Dot(LEFT * 1.1 + DOWN * 0.25, radius=0.12, color=INK)
+            b = Dot(RIGHT * 1.1 + DOWN * 0.25, radius=0.12, color=INK)
+            ar = Arrow(a.get_center(), b.get_center(), buff=0.2, color=RED, stroke_width=6)
+            env2 = self.envelope_icon(0.75, 0.5, RED).move_to(UP * 0.25)
+            icon = VGroup(a, b, ar, env2)
+            card = self.trio_card("HTTP", "주고받는 배달 규칙", RED,
+                                  RIGHT * 4.3 + DOWN * 0.4, icon)
+            link1 = Arrow(self.st["c_html"][0].get_right(),
+                          self.st["c_url"][0].get_left(), buff=0.1,
+                          color=LGRAY, stroke_width=5)
+            link2 = Arrow(self.st["c_url"][0].get_right(),
+                          card[0].get_left(), buff=0.1, color=LGRAY, stroke_width=5)
+            t1 = max(0.4, min(1.0, d * 0.4))
+            self.play(FadeIn(card, scale=1.08), run_time=t1)
+            t2 = max(0.3, min(0.8, d * 0.3))
+            self.play(GrowFromCenter(link1), GrowFromCenter(link2), run_time=t2)
+            self.hold(d - t1 - t2)
+
+        self.run_beats(S, [a0, a1, a2, a3])
+
+    # --- 8: 3층 누적 — 도로망 → 공통 언어 → 우편 시스템 (도형, 2편 봉투 문법 통일) ---
+    def seg08(self, S):
+        def band(self_, label, color, y):
+            b = RoundedRectangle(corner_radius=0.18, width=10.2, height=1.7)
+            b.set_stroke(color, 4).set_fill(WHITE, 1).move_to(UP * y)
+            lab = ktext(label, 28, INK, bold=True)
+            lab.move_to(b.get_right() + LEFT * (lab.width / 2 + 0.5))
+            return VGroup(b, lab)
+
+        def a0(d):
+            road = band(self, "인터넷 — 도로망", INK, -2.2)
+            nodes, edges, _ = build_mesh(scale=0.28, shift=(-2.6, -2.2))
+            self.st["l_road"] = VGroup(road, edges, nodes)
+            self.act(d, FadeIn(road[0]), FadeIn(road[1]),
+                     Create(edges), FadeIn(nodes), rt=min(1.8, d * 0.65))
+
+        def a1(d):
+            lang = band(self, "TCP/IP — 공통 언어", BLUE, -0.3)
+            env = self.envelope_icon(1.3, 0.85).move_to(LEFT * 2.6 + DOWN * 0.3)
+            web = band(self, "웹 — 우편 시스템", RED, 1.6)
+            doc = Rectangle(width=0.8, height=1.0).set_stroke(RED, 3).set_fill(WHITE, 1)
+            dlines = VGroup(*[Line(ORIGIN, RIGHT * 0.5).set_stroke(LGRAY, 3)
+                              .move_to(doc.get_top() + DOWN * (0.25 + i * 0.22))
+                              for i in range(3)])
+            docg = VGroup(doc, dlines).move_to(LEFT * 2.6 + UP * 1.6)
+            self.st["l_web"] = web
+            self.act(d, LaggedStart(
+                FadeIn(VGroup(lang, env), shift=UP * 0.3),
+                FadeIn(VGroup(web, docg), shift=UP * 0.3), lag_ratio=0.45),
+                rt=min(2.2, d * 0.7))
+
+        def a2(d):
+            env = self.envelope_icon(0.9, 0.6, RED)
+            start = self.st["l_web"][0].get_left() + RIGHT * 0.8 + UP * 0.45
+            end = self.st["l_web"][0].get_right() + LEFT * 0.8 + UP * 0.45
+            env.move_to(start)
+            t1 = max(0.3, min(0.5, d * 0.2))
+            self.play(FadeIn(env, scale=1.2), run_time=t1)
+            t2 = max(0.6, min(2.0, d * 0.5))
+            self.play(MoveAlongPath(env, Line(start, end)), run_time=t2)
+            self.hold(d - t1 - t2)
+
+        self.run_beats(S, [a0, a1, a2])
+
+    # --- 9: NeXT — 세계 최초의 웹서버 (실사) ---
+    def seg09(self, S):
+        def a0(d):
+            yr = chip("1990 — 세계 최초의 웹서버", INK, 26).to_corner(UL, buff=0.5)
+            ph, _ = self.ep_photo("next_server", height=5.0, pos=LEFT * 2.5 + DOWN * 0.1)
+            self.st["next"] = ph
+            self.play(FadeIn(yr, shift=DOWN * 0.2), run_time=0.3)
+            t1 = max(0.3, min(0.7, d * 0.25))
+            self.show_photo(ph, t1)
+            nx = chip("NeXT 컴퓨터", GRAY, 20).next_to(ph, DOWN, buff=0.25)
+            self.play(FadeIn(nx), run_time=0.3)
+            self.ken_burns(ph, d - t1 - 0.6, zoom=1.05)
+
+        def a1(d):
+            ph = self.st["next"]
+            hl = RoundedRectangle(corner_radius=0.08, width=2.2, height=1.0)
+            hl.set_fill(AMBER, 0.35).set_stroke(AMBER, 3)
+            hl.move_to(ph[0].get_center() + DOWN * 0.6)
+            self.act(d, FadeIn(hl, scale=1.2))
+
+        def a2(d):
+            l1 = ktext("이 기계는 서버입니다.", 30, INK, bold=True)
+            card = RoundedRectangle(corner_radius=0.15, width=l1.width + 0.7,
+                                    height=l1.height + 1.5)
+            card.set_stroke(INK, 3).set_fill(PAPER, 1)
+            card.move_to(RIGHT * 3.7 + UP * 0.6)
+            l1.move_to(card.get_center() + UP * 0.35)
+            self.st["label_card"] = VGroup(card, l1)
+            self.act(d, FadeIn(self.st["label_card"], scale=1.1))
+
+        def a3(d):
+            l2 = ktext("전원을 끄지 마시오.", 32, RED, bold=True)
+            l2.move_to(self.st["label_card"][0].get_center() + DOWN * 0.4)
+            t1 = max(0.3, min(0.8, d * 0.4))
+            self.play(FadeIn(l2, scale=1.2), run_time=t1)
+            t2 = min(0.6, max(0.3, d * 0.25))
+            self.play(Wiggle(self.st["label_card"], scale_value=1.05), run_time=t2)
+            self.hold(d - t1 - t2)
+
+        self.run_beats(S, [a0, a1, a2, a3])
+
+    # --- 10: 1991 공개 — 최초의 웹사이트 (실사) ---
+    def seg10(self, S):
+        def a0(d):
+            yr = chip("1991 — 세상에 공개", INK, 26).to_corner(UL, buff=0.5)
+            ph, _ = self.ep_photo("go_public", height=5.2, pos=DOWN * 0.1)
+            self.st["pub"] = ph
+            self.play(FadeIn(yr, shift=DOWN * 0.2), run_time=0.3)
+            t1 = max(0.3, min(0.7, d * 0.25))
+            self.show_photo(ph, t1)
+            self.ken_burns(ph, d - t1 - 0.3, zoom=1.06)
+
+        def a1(d):
+            cap = chip("최초의 웹사이트 — '웹이란 무엇인가' 안내문", GRAY, 20)
+            cap.next_to(self.st["pub"], DOWN, buff=0.25)
+            t1 = max(0.3, min(0.6, d * 0.2))
+            self.play(FadeIn(cap, shift=UP * 0.15), run_time=t1)
+            self.ken_burns(self.st["pub"], d - t1, zoom=1.05, drift=UP * 0.12)
+
+        self.run_beats(S, [a0, a1])
+
+    # --- 11: 1993.4.30 — 웹을 공짜로 풀다 (실사) ---
+    def seg11(self, S):
+        def a0(d):
+            date = chip("1993. 4. 30", RED, 28).to_corner(UL, buff=0.5)
+            ph, _ = self.ep_photo("free_release", height=5.0, pos=DOWN * 0.1)
+            self.st["free"] = ph
+            self.play(FadeIn(date, shift=DOWN * 0.2), run_time=0.3)
+            t1 = max(0.3, min(0.7, d * 0.25))
+            self.show_photo(ph, t1)
+            self.ken_burns(ph, d - t1 - 0.3, zoom=1.05)
+
+        def a1(d):
+            tag = chip("특허료 없이, 누구나", BLUE, 26).move_to(UP * 3.1)
+            t1 = max(0.3, min(0.6, d * 0.25))
+            self.play(FadeIn(tag, scale=1.2), run_time=t1)
+            self.ken_burns(self.st["free"], d - t1, zoom=1.05)
+
+        def a2(d):
+            stamp = chip("무료 — 영원히", BLUE, 32).rotate(0.2)
+            stamp.move_to(self.st["free"][0].get_corner(DR) + UL * 1.2)
+            t1 = max(0.3, min(0.7, d * 0.35))
+            self.play(FadeIn(stamp, scale=1.7), run_time=t1)
+            self.play(Flash(stamp.get_center(), color=BLUE, flash_radius=1.6),
+                      run_time=min(0.5, max(0.3, d * 0.2)))
+            self.hold(d - t1 - min(0.5, max(0.3, d * 0.2)))
+
+        self.run_beats(S, [a0, a1, a2])
+
+    # --- 12: 오늘의 웹 — 몽타주 (소재 있으면 실사, 없으면 그래픽) ---
+    def seg12(self, S):
+        real = find_asset("ep03_today_web")
+
+        def a0(d):
+            if real:
+                ph = self.photo(os.path.basename(real), height=5.2, pos=DOWN * 0.1)
+                self.st["today"] = ph
+                t1 = max(0.3, min(0.8, d * 0.3))
+                self.show_photo(ph, t1)
+                self.ken_burns(ph, d - t1, zoom=1.06)
+                return
+            wins = Group()
+            icons = ["play", "cart", "doc", "chat", "grid", "video"]
+            pos_grid = [LEFT * 3.9 + UP * 1.8, UP * 1.8, RIGHT * 3.9 + UP * 1.8,
+                        LEFT * 3.9 + DOWN * 0.4, DOWN * 0.4, RIGHT * 3.9 + DOWN * 0.4]
+            for kind, p in zip(icons, pos_grid):
+                w = RoundedRectangle(corner_radius=0.15, width=3.0, height=1.9)
+                w.set_stroke(INK, 3).set_fill(WHITE, 1).move_to(p)
+                bar = Line(w.get_corner(UL) + DOWN * 0.4, w.get_corner(UR) + DOWN * 0.4)
+                bar.set_stroke(LGRAY, 2)
+                dots = VGroup(*[Dot(radius=0.045, color=LGRAY) for _ in range(3)])
+                dots.arrange(RIGHT, buff=0.12)
+                dots.move_to(w.get_corner(UL) + RIGHT * 0.42 + DOWN * 0.2)
+                if kind in ("play", "video"):
+                    ic = Triangle().scale(0.22).rotate(-PI / 2)
+                    ic.set_fill(RED, 1).set_stroke(RED, 2)
+                elif kind == "cart":
+                    ic = VGroup(RoundedRectangle(corner_radius=0.05, width=0.55, height=0.4)
+                                .set_stroke(AMBER, 4),
+                                Dot(radius=0.05, color=AMBER).shift(DOWN * 0.32 + LEFT * 0.15),
+                                Dot(radius=0.05, color=AMBER).shift(DOWN * 0.32 + RIGHT * 0.15))
+                elif kind == "chat":
+                    ic = RoundedRectangle(corner_radius=0.18, width=0.6, height=0.42)
+                    ic.set_stroke(BLUE, 4)
+                elif kind == "grid":
+                    ic = VGroup(*[RoundedRectangle(corner_radius=0.04, width=0.24, height=0.24)
+                                  .set_stroke(GRAY, 3) for _ in range(4)])
+                    ic.arrange_in_grid(rows=2, buff=0.08)
+                else:
+                    ic = VGroup(*[Line(ORIGIN, RIGHT * 0.6).set_stroke(LGRAY, 4)
+                                  .shift(DOWN * i * 0.16) for i in range(3)])
+                ic.move_to(w.get_center() + DOWN * 0.2)
+                wins.add(VGroup(w, bar, dots, ic))
+            self.st["wins"] = wins
+            self.act(d, LaggedStart(*[FadeIn(w, scale=1.1) for w in wins],
+                                    lag_ratio=0.12), rt=min(2.4, d * 0.7))
+
+        def a1(d):
+            base = RoundedRectangle(corner_radius=0.15, width=11.5, height=0.9)
+            base.set_stroke(BLUE, 4).set_fill("#DBEAFE", 1).move_to(DOWN * 2.35)
+            blab = ktext("1993 — 공짜가 된 기술", 26, BLUE, bold=True).move_to(base)
+            iff = chip("사용료를 물렸다면 — 지금의 웹은 없다", RED, 22).move_to(DOWN * 3.3)
+            t1 = max(0.4, min(0.9, d * 0.35))
+            self.play(FadeIn(VGroup(base, blab), shift=UP * 0.2), run_time=t1)
+            t2 = max(0.3, min(0.8, d * 0.3))
+            self.play(FadeIn(iff, scale=1.15), run_time=t2)
+            self.hold(d - t1 - t2)
+
+        self.run_beats(S, [a0, a1])
+
+    # --- 13: 법칙 — 글자만 있던 초기 웹 (도형) ---
+    def seg13(self, S):
+        def a0(d):
+            num = chip("이 시리즈의 법칙", BLUE, 28).move_to(UP * 2.9)
+            self.st["lawnum"] = num
+            self.act(d, FadeIn(num, shift=DOWN * 0.2))
+
+        def a1(d):
+            p1 = ktext("모든 해결은,", fs=48, color=INK, bold=True)
+            p2 = chip("새로운 문제", BLUE, 40)
+            p3 = ktext("를 낳는다", fs=48, color=INK, bold=True)
+            law = VGroup(p1, p2, p3).arrange(RIGHT, buff=0.28).move_to(UP * 1.9)
+            self.st["law"] = law
+            self.act(d, FadeIn(law, scale=1.12), rt=min(1.2, d * 0.55))
+
+        def a2(d):
+            win = self.doc_card(DOWN * 1.1, w=7.2, h=3.9, nlines=5)
+            tag = chip("초기 웹 — 글자뿐", GRAY, 22)
+            tag.move_to(win[0].get_corner(UL) + RIGHT * (tag.width / 2 + 0.15)
+                        + DOWN * (tag.height / 2 + 0.15))
+            self.st["plain"] = win
+            self.act(d, Create(win[0]),
+                     LaggedStart(*[Create(l) for l in win[1]], lag_ratio=0.1),
+                     FadeIn(tag), rt=min(1.8, d * 0.65))
+
+        def a3(d):
+            slot = DashedVMobject(Rectangle(width=1.9, height=1.3), num_dashes=22)
+            slot.set_stroke(LGRAY, 3)
+            slot.move_to(self.st["plain"][0].get_right() + LEFT * 1.5 + DOWN * 0.5)
+            x = VGroup(Line(UL * 0.3, DR * 0.3), Line(UR * 0.3, DL * 0.3))
+            x.set_stroke(RED, 6).move_to(slot)
+            cap = chip("사진 한 장 못 띄움", GRAY, 20).next_to(slot, DOWN, buff=0.2)
+            self.st["slot"] = slot
+            self.st["slotx"] = x
+            self.act(d, Create(slot), FadeIn(x, scale=1.3), FadeIn(cap))
+
+        def a4(d):
+            pic = Rectangle(width=1.9, height=1.3).set_stroke(BLUE, 4).set_fill("#DBEAFE", 1)
+            mount = Triangle().scale(0.3).set_fill(BLUE, 1).set_stroke(BLUE, 2)
+            mount.move_to(pic.get_center() + DOWN * 0.2)
+            sun = Circle(radius=0.13).set_fill(AMBER, 1).set_stroke(AMBER, 2)
+            sun.move_to(pic.get_center() + UP * 0.3 + RIGHT * 0.5)
+            img = VGroup(pic, mount, sun).move_to(self.st["slot"].get_center())
+            flip = chip("그림이 뜨는 순간 — 판이 뒤집힌다", RED, 24).move_to(UP * 0.6)
+            t1 = max(0.3, min(0.7, d * 0.3))
+            self.play(FadeOut(self.st.pop("slotx")), FadeIn(img, scale=1.2), run_time=t1)
+            t2 = min(0.5, max(0.3, d * 0.2))
+            self.play(Flash(img.get_center(), color=BLUE, flash_radius=1.4), run_time=t2)
+            t3 = max(0.3, min(0.8, d * 0.3))
+            self.play(FadeIn(flip, scale=1.2),
+                      Wiggle(self.st["plain"], scale_value=1.03), run_time=t3)
+            self.hold(d - t1 - t2 - t3)
+
+        self.run_beats(S, [a0, a1, a2, a3, a4])
+
+    # --- 14: 질문 + 예고 + CTA (실사 예고컷 + 도형) ---
+    def seg14(self, S):
+        def a0(d):
+            t = ktext("여러분이 CERN이었다면, 공짜로 풀 수 있었을까요?", 32, INK, bold=True)
+            box = RoundedRectangle(corner_radius=0.25, width=t.width + 0.8,
+                                   height=t.height + 0.7)
+            box.set_stroke(INK, 4).set_fill(PAPER, 1)
+            tail = Triangle().scale(0.22).rotate(PI)
+            tail.set_stroke(INK, 4).set_fill(PAPER, 1)
+            tail.move_to(box.get_bottom() + DOWN * 0.16 + LEFT * 2.2)
+            bubble = VGroup(box, tail, t.move_to(box)).move_to(UP * 2.2)
+            self.st["bubble"] = bubble
+            self.act(d, FadeIn(bubble, scale=1.1))
+
+        def a1(d):
+            cmt = chip("댓글로", BLUE, 28).next_to(self.st["bubble"], DOWN, buff=0.4)
+            self.act(d, FadeIn(cmt, shift=UP * 0.2),
+                     Indicate(self.st["bubble"], color=BLUE, scale_factor=1.03))
+
+        def a2(d):
+            ph, _ = self.ep_photo("next", height=2.6, pos=LEFT * 3.9 + DOWN * 1.6)
+            tag = chip("#04 — 모자이크 & 넷스케이프", INK, 28)
+            tag.move_to(RIGHT * 1.6 + DOWN * 1.1)
+            teaser = ktext("밋밋한 웹에 처음 그림을 띄운, 대학 시급 알바생", 24, GRAY)
+            teaser.next_to(tag, DOWN, buff=0.28)
+            t1 = max(0.3, min(0.7, d * 0.3))
+            self.show_photo(ph, t1)
+            t2 = max(0.3, min(0.8, d * 0.3))
+            self.play(FadeIn(tag, scale=1.15), FadeIn(teaser, shift=UP * 0.15), run_time=t2)
+            self.hold(d - t1 - t2)
+
+        def a3(d):
+            btn_box = RoundedRectangle(corner_radius=0.3, width=2.3, height=0.8)
+            btn_box.set_stroke(width=0).set_fill(RED, 1)
+            btn_t = ktext("구독", 36, WHITE, bold=True).move_to(btn_box)
+            sub_btn = VGroup(btn_box, btn_t).move_to(RIGHT * 5.2 + DOWN * 2.6)
+            like_box = RoundedRectangle(corner_radius=0.3, width=2.3, height=0.8)
+            like_box.set_stroke(BLUE, 4).set_fill(WHITE, 1)
+            like_t = ktext("좋아요", 30, BLUE, bold=True).move_to(like_box)
+            like_btn = VGroup(like_box, like_t).next_to(sub_btn, DOWN, buff=0.25)
+            cc = Text("© nous-zero", font=KFONT, font_size=22, color=LGRAY)
+            cc.to_corner(DL, buff=0.4)
+            t1 = max(0.4, min(0.9, d * 0.35))
+            self.play(FadeIn(sub_btn, scale=1.5), FadeIn(like_btn, scale=1.3),
+                      run_time=t1)
+            t2 = max(0.3, min(0.5, d * 0.2))
+            self.play(Indicate(sub_btn, color=RED, scale_factor=1.12), FadeIn(cc),
+                      run_time=t2)
+            self.hold(d - t1 - t2)
+
+        self.run_beats(S, [a0, a1, a2, a3])
+
+
 # ---------- 조립(오디오·자막·먹싱) ----------
 
 def build_srt():
@@ -1494,7 +2193,7 @@ def main():
     total = INTRO_D + sum(s["total"] + GAP for s in TIMED) + 1.2
     print(f"[v2] 예상 길이: {total:.0f}초 ({total / 60:.1f}분)")
 
-    episodes = {"01": Episode01, "02": Episode02}
+    episodes = {"01": Episode01, "02": Episode02, "03": Episode03}
     if EP not in episodes:
         print(f"[v2] 오류: {EP}편 장면 클래스가 없음 (지원: {', '.join(episodes)})")
         sys.exit(1)
@@ -1517,11 +2216,17 @@ def main():
         subprocess.run(cmd, check=True, capture_output=True)
         print(f"[v2] 완성: {final}")
     else:
-        final = os.path.join(OUT, "episode_silent_preview.mp4")
+        # --out-name 지정 시 그 이름을 존중(예: episode_480p_draft.mp4), 미지정이면 기존 관례 유지
+        silent_name = OUT_NAME if OUT_NAME != "episode.mp4" else "episode_silent_preview.mp4"
+        final = os.path.join(OUT, silent_name)
         if os.path.exists(final):
             os.remove(final)
         os.replace(silent, final)
         print(f"[v2] 무음 시안: {final} (음성 도착 후 다시 실행하면 완성본)")
+    ep_cls = episodes[EP]
+    used_ph = getattr(ep_cls, "PLACEHOLDERS_USED", None)
+    if used_ph:
+        print(f"[v2] 플레이스홀더 사용 장면: {', '.join(used_ph)}")
     print(f"[v2] 자막: {srt}")
 
 
