@@ -1947,7 +1947,7 @@ class Episode03(EpisodeBase):
             self.ken_burns(ph, d - t1 - 0.3, zoom=1.06)
 
         def a1(d):
-            cap = chip("최초의 웹사이트 — '웹이란 무엇인가' 안내문", GRAY, 20)
+            cap = chip("최초의 웹사이트 — '웹이란 무엇인가' 안내문 (재현 화면)", GRAY, 20)
             cap.next_to(self.st["pub"], DOWN, buff=0.25)
             t1 = max(0.3, min(0.6, d * 0.2))
             self.play(FadeIn(cap, shift=UP * 0.15), run_time=t1)
