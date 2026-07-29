@@ -24,6 +24,7 @@ if hasattr(sys.stdout, "reconfigure"):
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EP = next((a for a in sys.argv[1:] if not a.startswith("-")), "01")
 FULL = "--full" in sys.argv
+AUDIT = "--audit" in sys.argv  # 세이프 영역 감사 모드(저프레임 렌더 — 기하만 검사, 오디오 생략)
 OUT = os.path.join(ROOT, "video", "output", f"{EP}_v2")
 AUDIO_DIR = os.path.join(OUT, "audio")
 ASSETS = os.path.join(ROOT, "video", "output", "assets")
@@ -33,6 +34,17 @@ HOOK_D = 1.3   # 훅 카드
 END_D = 1.6    # 엔딩 카드
 SPEED = 1.35   # 나레이션 배속(음정 유지) — 쇼츠 문법
 ZOOM_DRIFT = 0.985  # 문장마다 화면이 서서히 밀고 들어감(정지화면 제거)
+
+# --- 세이프 영역(2026-07-29 실사고 대응) -------------------------------------
+# 사고: 3편 쇼츠에서 상단 팝·하단 문구·좌측 화자 라벨이 좌우로 잘려 나감.
+# 원인: 요소는 '줌 안 들어간 프레임(폭 9.0)' 기준으로 배치·축소되는데, 카메라 드리프트가
+#       프레임을 폭 7.2까지 밀고 들어가 실제 보이는 폭이 7.2로 줄어듦 → 8.2폭 텍스트가 잘림.
+# 조치: ①드리프트 하한을 8.3으로 올려 '9.0 기준 도형'이 최대 줌에서도 살아남게 하고
+#       ②모든 글자 요소의 최대 폭·배치를 세이프 상자 안으로 강제(ktext/chip/keep_in).
+ZOOM_FLOOR = 8.3          # 카메라가 밀고 들어갈 수 있는 최소 프레임 폭(= 최소 가시 폭)
+SAFE_W = 7.6              # 글자 요소 최대 폭(최소 가시 폭의 92%)
+SAFE_TOP = 6.9            # 글자 요소 상·하한 |y| (최소 가시 높이 14.76의 절반 × 0.94)
+SUB_W = 8.2               # 자막 상자 폭(카메라 고정 — 프레임 폭의 91%)
 
 DARK = "#0B1220"
 DGRID = "#1B2A44"
@@ -53,14 +65,48 @@ from manim import (  # noqa: E402
 )
 import numpy as np  # noqa: E402
 
+# --- '팝 인' 과대 배율 자동 제한 -----------------------------------------------
+# FadeIn(m, scale=1.8)은 '1.8배 크기에서 시작해 제자리로 줄어드는' 연출이다.
+# 폭이 넓은 글자에 이걸 쓰면 시작 순간 화면 밖으로 삐져나가 잘린 채로 보인다
+# (실측: 3편 A '각색 아님 — 실물이 남은 실화' 칩 폭 6.75 × 1.5 = 10.1 > 프레임 9.0).
+# 아래 래퍼가 '지금 보이는 프레임 폭'을 넘지 않게 배율을 자동으로 깎는다.
+VIS_W = [9.0]   # 현재 보이는 프레임 폭(카메라 드리프트 반영) — ShortBase가 갱신
+_FadeIn = FadeIn
+
+
+def FadeIn(m, **kw):  # noqa: F811
+    k = kw.get("scale")
+    if k and k > 1:
+        w = float(getattr(m, "width", 0.0) or 0.0)
+        h = float(getattr(m, "height", 0.0) or 0.0)
+        lim = 99.0
+        if w > 0.01:
+            lim = min(lim, VIS_W[0] * 0.98 / w)
+        if h > 0.01:
+            lim = min(lim, VIS_W[0] * (16 / 9) * 0.98 / h)
+        if k > lim:
+            kw["scale"] = max(1.0, lim)
+    return _FadeIn(m, **kw)
+
+
 config.background_color = DARK
 config.frame_width = 9.0
 config.frame_height = 16.0
-if FULL:
+if AUDIT:
+    # 감사 모드 — 해상도는 시안과 같게(540x960) 두고 프레임률만 5fps로 낮춰 싸게 돌린다.
+    # 해상도를 더 낮추면 안 된다: manim 은 글자를 '픽셀 크기 캔버스'에 Pango 로 그린 뒤
+    # 월드 좌표로 환산하므로, 캔버스가 좁으면 긴 문장이 자동 줄바꿈돼 기하가 달라진다.
+    #   실측(같은 문장·fs40): 270x480 → 폭 13.04·높이 1.27(2줄) /
+    #                        540x960·1080x1920·2160x3840 → 모두 폭 15.55·높이 0.53(1줄)
+    # 즉 540 이상이면 시안·완성본 기하가 동일하다(시안 검수가 완성본을 대표함).
+    config.pixel_width, config.pixel_height, config.frame_rate = 540, 960, 5
+elif FULL:
     config.pixel_width, config.pixel_height, config.frame_rate = 1080, 1920, 30
 else:
     config.pixel_width, config.pixel_height, config.frame_rate = 540, 960, 15
-config.media_dir = os.path.join(OUT, "media_shorts")
+# 감사 렌더는 별도 media_dir 을 쓴다 — manim 의 글자 SVG 캐시는 파일명에 픽셀 크기를
+# 넣지 않아서, 다른 해상도로 만든 캐시가 본렌더에 섞이면 글자 크기가 틀어진다.
+config.media_dir = os.path.join(OUT, "media_audit" if AUDIT else "media_shorts")
 config.disable_caching = True
 
 with open(os.path.join(ROOT, "video", "scripts", f"{EP}.json"), encoding="utf-8") as f:
@@ -132,26 +178,113 @@ def grid_bg():
     return g
 
 
-def ktext(s, fs=44, color=WHITE, bold=True):
-    t = Text(s, font=KFONT, font_size=fs, color=color, weight="BOLD" if bold else "NORMAL")
-    if t.width > 8.2:
-        t.scale_to_fit_width(8.2)
+def keep_in(m, max_w=SAFE_W, top=SAFE_TOP):
+    """세이프 상자(가로 max_w·세로 ±top) 안으로 강제 — 넘치면 축소하고, 치우쳤으면 밀어 넣는다.
+
+    쉬운 말: 액자(화면) 밖으로 삐져나간 글자를 '먼저 줄이고, 그래도 걸치면 안쪽으로 민다'."""
+    if m.width > max_w:
+        m.scale_to_fit_width(max_w)
+    if m.height > 2 * top:
+        m.scale_to_fit_height(2 * top)
+    dx = dy = 0.0
+    left, right = m.get_left()[0], m.get_right()[0]
+    if left < -max_w / 2:
+        dx = -max_w / 2 - left
+    elif right > max_w / 2:
+        dx = max_w / 2 - right
+    bot, tp = m.get_bottom()[1], m.get_top()[1]
+    if tp > top:
+        dy = top - tp
+    elif bot < -top:
+        dy = -top - bot
+    if dx or dy:
+        m.shift(np.array([dx, dy, 0.0]))
+    return m
+
+
+class SafeText(Text):
+    """배치(move_to·next_to) 직후 스스로 세이프 상자 안으로 들어가는 글자."""
+
+    def move_to(self, *a, **kw):
+        super().move_to(*a, **kw)
+        return keep_in(self)
+
+    def next_to(self, *a, **kw):
+        super().next_to(*a, **kw)
+        return keep_in(self)
+
+
+class SafeGroup(VGroup):
+    """배치 직후 스스로 세이프 상자 안으로 들어가는 묶음(칩·말풍선·여러 줄 문구)."""
+
+    def move_to(self, *a, **kw):
+        super().move_to(*a, **kw)
+        return keep_in(self)
+
+    def next_to(self, *a, **kw):
+        super().next_to(*a, **kw)
+        return keep_in(self)
+
+
+def wrap_lines(s, n):
+    """한 문장을 공백 기준으로 n줄에 균등 분배(글자 수 기준). 나눌 수 없으면 None."""
+    words = s.split()
+    if len(words) < n:
+        return None
+    target = len(s) / n
+    lines, cur = [], ""
+    for w in words:
+        cand = (cur + " " + w).strip()
+        if cur and len(cand) > target * 1.15 and len(lines) < n - 1:
+            lines.append(cur)
+            cur = w
+        else:
+            cur = cand
+    lines.append(cur)
+    return lines if len(lines) == n and all(lines) else None
+
+
+def ktext(s, fs=44, color=WHITE, bold=True, max_w=SAFE_W, max_lines=2):
+    """한글 문구 — 세이프 폭을 넘으면 ①줄바꿈 먼저 ②그래도 넘치면 축소."""
+    weight = "BOLD" if bold else "NORMAL"
+
+    def mk(ls):
+        if len(ls) == 1:
+            return SafeText(ls[0], font=KFONT, font_size=fs, color=color, weight=weight)
+        g = SafeGroup(*[Text(x, font=KFONT, font_size=fs, color=color, weight=weight) for x in ls])
+        return g.arrange(DOWN, buff=0.14)
+
+    t = mk([s])
+    n = 2
+    while t.width > max_w and n <= max_lines:
+        ls = wrap_lines(s, n)
+        if ls:
+            cand = mk(ls)
+            if cand.width < t.width:
+                t = cand
+        n += 1
+    if t.width > max_w:
+        t.scale_to_fit_width(max_w)
     return t
 
 
-def chip(s, color=RED, fs=34):
+def chip(s, color=RED, fs=34, max_w=SAFE_W):
     t = Text(s, font=KFONT, font_size=fs, color=WHITE, weight="BOLD")
+    if t.width > max_w - 0.55:      # 상자 여백(0.55)까지 합쳐 세이프 폭을 넘지 않게
+        t.scale_to_fit_width(max_w - 0.55)
     box = RoundedRectangle(corner_radius=0.16, width=t.width + 0.55, height=t.height + 0.42)
     box.set_fill(color, 1).set_stroke(width=0)
     t.move_to(box)
-    return VGroup(box, t)
+    return SafeGroup(box, t)
 
 
 class ShortBase(MovingCameraScene):
     SPEC = None  # {"segs": [...], "hook": [...], "title": ...}
 
     def construct(self):
-        self.add(grid_bg())
+        VIS_W[0] = float(config.frame_width)
+        self._grid = grid_bg()
+        self.add(self._grid)
         self.subtitle = None
         self.hook_card()
         keep = self.SPEC.get("keep", set())  # 이 세그 뒤에는 화면을 지우지 않음(이야기 연속)
@@ -166,12 +299,66 @@ class ShortBase(MovingCameraScene):
             else:
                 self.clear_stage(GAP if k < len(self.SPEC["segs"]) - 1 else 0.3)
         self.end_card()
+        self.report_overflow()
+
+    # --- 불변식: 화면에 있는 모든 요소는 '지금 보이는 프레임' 안에 있어야 한다 -------
+    # (2026-07-29 잘림 사고 재발 방지 — rule5 §2·§4. --audit 모드에서 초소형 렌더로 전수 검사)
+    def _describe(self, m):
+        txts = [s.text for s in m.get_family() if isinstance(s, Text)]
+        if txts:
+            return "「" + " / ".join(t[:16] for t in txts[:2]) + "」"
+        return type(m).__name__
+
+    def audit_frame(self):
+        # 시안·완성 렌더에서도 항상 돈다(비용: 바운딩박스 계산뿐) — 잘림은 조용히 지나가면 안 된다.
+        frame = self.camera.frame
+        hw, hh = frame.width / 2, frame.height / 2
+        for m in self.mobjects:
+            if m is frame or m is getattr(self, "_grid", None) or m is self.subtitle:
+                continue
+            try:
+                left, right = m.get_left()[0], m.get_right()[0]
+                bot, top = m.get_bottom()[1], m.get_top()[1]
+            except Exception:
+                continue
+            ox = max(0.0, -hw - left, right - hw)
+            oy = max(0.0, -hh - bot, top - hh)
+            if max(ox, oy) > 0.02:
+                key = self._describe(m)
+                prev = self.overflow.get(key, (0.0, 0.0, 0.0))
+                self.overflow[key] = (max(prev[0], ox), max(prev[1], oy), frame.width)
+
+    overflow = None
+
+    def report_overflow(self):
+        name = type(self).__name__
+        if not self.overflow:
+            print(f"[audit] {name}: 프레임 이탈 0건 — 모든 요소가 화면 안")
+            return
+        print(f"[audit] {name}: 프레임 이탈 {len(self.overflow)}건 "
+              f"(가로 초과/세로 초과, 월드 단위 · 프레임 폭 9.0 기준)")
+        for k, (ox, oy, fw) in sorted(self.overflow.items(), key=lambda x: -max(x[1][0], x[1][1])):
+            print(f"    - {k}: 가로 +{ox:.2f} / 세로 +{oy:.2f} (당시 가시 폭 {fw:.2f})")
+
+    def play(self, *a, **kw):
+        if self.overflow is None:
+            self.overflow = {}
+        super().play(*a, **kw)
+        VIS_W[0] = float(self.camera.frame.width)
+        self.audit_frame()
+
+    def wait(self, *a, **kw):
+        if self.overflow is None:
+            self.overflow = {}
+        super().wait(*a, **kw)
+        VIS_W[0] = float(self.camera.frame.width)
+        self.audit_frame()
 
     # --- 공통 ---
     def sub(self, txt):
         t = Text(txt, font=KFONT, font_size=40, color=WHITE, weight="BOLD")
-        if t.width > 8.0:
-            t.scale_to_fit_width(8.0)
+        if t.width > SUB_W - 0.5:   # 상자(+0.5)까지 합쳐 프레임 폭의 91% 이내
+            t.scale_to_fit_width(SUB_W - 0.5)
         t.move_to(DOWN * 5.1)
         bg = RoundedRectangle(corner_radius=0.18, width=t.width + 0.5, height=t.height + 0.42)
         bg.set_fill("#000000", 0.55).set_stroke(width=0).move_to(t)
@@ -191,7 +378,7 @@ class ShortBase(MovingCameraScene):
         self.add(grp)
         self.subtitle = grp
 
-    POP_POS = [UP * 5.3 + LEFT * 1.2, UP * 5.0 + RIGHT * 1.3, UP * 5.4]
+    POP_POS = [UP * 5.3 + LEFT * 0.9, UP * 5.0 + RIGHT * 1.0, UP * 5.4]
 
     def beats(self, info, acts):
         sents = split_sents(info["text"])
@@ -206,7 +393,9 @@ class ShortBase(MovingCameraScene):
             if i < len(pops) and pops[i]:
                 # 텍스트 팝 — 키워드가 화면 상단에 쾅 박힘 (앰버/흰색 교차, 살짝 기울임)
                 color = AMBER if pop_i % 2 == 0 else WHITE
-                pop = ktext(pops[i], fs=86, color=color)
+                # 팝은 세이프 폭보다 좁게(6.4) — 화면 밖 여유를 남겨 '쾅' 배율을 살린다.
+                # 줄바꿈은 금지(max_lines=1): 두 줄이 되면 위로 커져 상단 날짜 칩과 겹친다.
+                pop = ktext(pops[i], fs=86, color=color, max_w=6.4, max_lines=1)
                 pop.rotate(0.05 * (1 if pop_i % 2 else -1))
                 pop.move_to(self.POP_POS[pop_i % 3])
                 pop_i += 1
@@ -221,9 +410,9 @@ class ShortBase(MovingCameraScene):
                 self.play(FadeOut(pop, scale=0.8), run_time=0.15)
 
     def _drift(self, steps=1.0):
-        # 줌 하한선(폭 7.2) 아래로는 더 밀고 들어가지 않음 — 자막 안전지대 보호
+        # 줌 하한선(ZOOM_FLOOR) 아래로는 더 밀고 들어가지 않음 — 화면 밖 잘림 방지
         frame = self.camera.frame
-        if frame.width * (ZOOM_DRIFT ** steps) < 7.2:
+        if frame.width * (ZOOM_DRIFT ** steps) < ZOOM_FLOOR:
             return None
         return frame.animate.scale(ZOOM_DRIFT ** steps)
 
@@ -258,6 +447,8 @@ class ShortBase(MovingCameraScene):
     def photo(self, fname, height=4.5, pos=ORIGIN, framed=True):
         img = ImageMobject(os.path.join(ASSETS, fname))
         img.height = height
+        if img.width > SAFE_W:      # 가로 사진이 프레임 밖으로 새어 액자가 잘리는 것 방지
+            img.scale_to_fit_width(SAFE_W)
         img.move_to(pos)
         if not framed:  # 투명 PNG(배지 등) — 흰 액자 없이
             return Group(img)
@@ -291,7 +482,7 @@ class ShortBase(MovingCameraScene):
 
     # --- 세그 장면 (세로 구도) ---
     def seg000(self, info):
-        term = RoundedRectangle(corner_radius=0.25, width=8.2, height=5.2)
+        term = RoundedRectangle(corner_radius=0.25, width=SAFE_W, height=5.2)
         term.set_stroke(BLUE_L, 4).set_fill("#101A30", 1).move_to(UP * 1.6)
         prompt = Text(">", font=MONO, font_size=44, color=GRAY, weight="BOLD")
         prompt.move_to(term.get_corner(UL) + RIGHT * 0.6 + DOWN * 0.7)
@@ -793,8 +984,8 @@ class Short03Base(ShortBase):
             im.crop((0, 0, im.width, int(im.height * 0.22))).save(dst, quality=92)
         img = ImageMobject(dst)
         img.height = height
-        if img.width > 8.4:
-            img.scale_to_fit_width(8.4)
+        if img.width > SAFE_W:
+            img.scale_to_fit_width(SAFE_W)
         img.move_to(pos)
         border = Rectangle(width=img.width + 0.1, height=img.height + 0.1)
         border.set_stroke(WHITE, 5).move_to(img)
@@ -822,7 +1013,7 @@ class Short03Base(ShortBase):
                                height=txts.height + 0.5)
         box.set_stroke(color, 4).set_fill("#101A30", 1)
         txts.move_to(box)
-        return VGroup(box, txts).move_to(pos)
+        return SafeGroup(box, txts).move_to(pos)
 
     # --- 0: 1989 메모 — 낙서 세 단어 (실사: 제안서 표지) ---
     def seg000(self, info):
@@ -895,7 +1086,9 @@ class Short03Base(ShortBase):
             self.act(d, FadeIn(phrase, scale=1.2))
 
         def a5(d):
-            note = chip("대화는 각색 — 문제는 실제", GRAY, 22).move_to(DOWN * 4.3)
+            # 각색 고지는 상단으로 — 하단(DOWN*4.3)은 카메라 고정 자막이 최대 줌에서
+            # y=-4.29까지 올라와 글자가 겹친다(실측). 이 시점엔 상단 팝이 없어 자리가 빈다.
+            note = chip("대화는 각색 — 문제는 실제", GRAY, 22).move_to(UP * 5.6)
             self.act(d, FadeIn(note, shift=UP * 0.15))
 
         self.beats(info, [a0, a1, a2, a3, a4, a5])
@@ -926,9 +1119,7 @@ class Short03Base(ShortBase):
                          color=WHITE, weight="BOLD")
             t2txt = Text("A Proposal", font=MONO, font_size=34, color=WHITE, weight="BOLD")
             t3txt = ktext("정보 관리, 하나의 제안", fs=30, color=GRAY)
-            title = VGroup(t1txt, t2txt, t3txt).arrange(DOWN, buff=0.18).move_to(DOWN * 2.2)
-            if title.width > 8.0:
-                title.scale_to_fit_width(8.0)
+            title = SafeGroup(t1txt, t2txt, t3txt).arrange(DOWN, buff=0.18).move_to(DOWN * 2.2)
             self.act(d, FadeIn(title, shift=UP * 0.2))
 
         def a3(d):
@@ -1146,5 +1337,12 @@ if __name__ == "__main__":
     if EP not in SHORTS:
         print(f"[shorts] 오류: {EP}편 쇼츠 SPEC 없음 (지원: {', '.join(SHORTS)})")
         sys.exit(1)
+    if AUDIT:
+        # 세이프 영역 감사 — 90x160·4fps 초소형 렌더로 전 장면을 실제로 돌려
+        # '지금 보이는 프레임을 벗어난 요소'를 전수 측정한다(오디오 조립·인코딩 생략).
+        for cls, name in SHORTS[EP]:
+            config.output_file = f"{name}_audit"
+            cls().render()
+        sys.exit(0)
     for cls, name in SHORTS[EP]:
         build(cls, name)
