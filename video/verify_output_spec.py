@@ -305,10 +305,18 @@ def script_expected_seconds(ep, audio_dir):
     return total, ""
 
 
+#  감사 축 이름 → 로그에 찍히는 문구. build_shorts.audit_frame()/build_v2.audit_layout()
+#  이 같은 [audit] 형식을 쓰므로 본편·쇼츠를 한 코드로 판정한다.
+#  '보호영역 침범' 은 2026-07-30 신설 — 프레임 안이지만 요소끼리 겹치는 유형
+#  (3편 아웃트로: 예고 부제가 구독 버튼 밑으로 파묻힘)을 잡는 축이다.
+AUDIT_AXES = ("프레임 이탈", "보호영역 침범")
+
+
 def audit_lines(out_dir):
-    """프레임 이탈 감사 로그 수집 — build_shorts 의 audit_frame() 출력.
+    """레이아웃 감사 로그 수집 — build_shorts/build_v2 의 [audit] 출력.
     같은 장면이 여러 로그에 나오면 '가장 최근 파일'의 값을 채택한다(옛 로그의
-    수리 전 수치를 지금 값으로 오인하지 않기 위해)."""
+    수리 전 수치를 지금 값으로 오인하지 않기 위해).
+    반환: {장면이름: {축이름: {"count": n, "source": 파일명}}}"""
     hits = {}
     files = []
     for fn in os.listdir(out_dir):
@@ -320,8 +328,10 @@ def audit_lines(out_dir):
                 txt = f.read()
         except OSError:
             continue
-        for m in re.finditer(r"\[audit\] (\S+?): 프레임 이탈 (\d+)건", txt):
-            hits[m.group(1)] = {"count": int(m.group(2)), "source": os.path.basename(p)}
+        for axis in AUDIT_AXES:
+            for m in re.finditer(r"\[audit\] (\S+?): %s (\d+)건" % axis, txt):
+                hits.setdefault(m.group(1), {})[axis] = {
+                    "count": int(m.group(2)), "source": os.path.basename(p)}
     return hits
 
 
@@ -396,25 +406,33 @@ def body_bgm_rule(ep):
     return required, rule
 
 
-def check_frame_audit(rows, tag, out_dir, expect_scenes=2):
-    """프레임 이탈(안전영역) 감사 로그 판정.
+def check_frame_audit(rows, tag, out_dir, expect_scenes=2, scope=""):
+    """레이아웃 감사 로그 판정 — ①프레임 이탈 ②보호영역 침범(요소 간 겹침).
 
     ※ 로그에 찍히는 이름은 산출물 이름(shorts_A)이 아니라 Manim 장면 클래스 이름
-    (Short03A 등)이다 — build_shorts.py:340 `name = type(self).__name__`.
+    (Short03A·Episode03 등)이다 — `name = type(self).__name__`.
     그래서 이름을 미리 정해두고 찾으면 영원히 '미확인'이 된다. 찾은 이름을 그대로
     보고하는 방식으로 둔다(편마다 클래스 이름이 다른 것에도 자동 대응)."""
     hits = audit_lines(out_dir)
+    if scope:      # 본편/쇼츠 장면 이름이 한 폴더에 섞여 있으므로 접두어로 가른다
+        hits = {k: v for k, v in hits.items() if k.startswith(scope)}
     if not hits:
-        rows.append(Row(tag, "프레임 이탈", "미확인", "이탈 0건", "WARN",
-                        "렌더 로그에 [audit] 줄 없음 — 렌더 미실행이거나 로그 미보존"))
+        for axis in AUDIT_AXES:
+            rows.append(Row(tag, axis, "미확인", "0건", "WARN",
+                            "렌더 로그에 [audit] 줄 없음 — 렌더 미실행이거나 로그 미보존"))
         return
     for nm in sorted(hits):
-        h = hits[nm]
-        rows.append(Row(tag, "프레임 이탈(%s)" % nm, "%d건" % h["count"], "0건",
-                        "PASS" if h["count"] == 0 else "FAIL", "출처: %s" % h["source"]))
+        for axis in AUDIT_AXES:
+            h = hits[nm].get(axis)
+            if h is None:
+                rows.append(Row(tag, "%s(%s)" % (axis, nm), "미확인", "0건", "WARN",
+                                "이 축의 [audit] 줄이 없음 — 옛 렌더 로그(검사기 신설 전)"))
+                continue
+            rows.append(Row(tag, "%s(%s)" % (axis, nm), "%d건" % h["count"], "0건",
+                            "PASS" if h["count"] == 0 else "FAIL", "출처: %s" % h["source"]))
     if len(hits) < expect_scenes:
-        rows.append(Row(tag, "프레임 이탈 검사 범위", "%d장면" % len(hits),
-                        "%d장면(A·B)" % expect_scenes, "WARN",
+        rows.append(Row(tag, "레이아웃 감사 범위", "%d장면" % len(hits),
+                        "%d장면" % expect_scenes, "WARN",
                         "일부 장면의 감사 기록이 없다 — 부분 확인"))
 
 
@@ -431,6 +449,10 @@ def verify_body(rows, ep, out_dir):
     rows.append(Row(tag, "파일", os.path.basename(mp4), "episode.mp4", "INFO",
                     "%.1f MB" % (os.path.getsize(mp4) / 1e6)))
     check_video_spec(rows, tag, p, "body")
+    # 본편에도 레이아웃 감사를 건다(2026-07-30 신설). 감사가 지적한 "본편 프레임 이탈
+    # 불변식 부재"(유형 A 누적 5회) + 요소 간 겹침(3편 아웃트로) 두 축을 함께 판정한다.
+    # 장면 클래스 이름이 EpisodeNN 이므로 접두어로 쇼츠(ShortNN*) 기록과 가른다.
+    check_frame_audit(rows, tag, out_dir, expect_scenes=1, scope="Episode")
 
     # 오디오 규격은 mp4 컨테이너 실측값으로 본다(시청자가 받는 것이 이것이므로).
     check_audio_format(rows, tag, p["sample_rate"], p["channels"], "mp4 컨테이너 실측")
@@ -523,7 +545,7 @@ def verify_body(rows, ep, out_dir):
 
 def verify_shorts(rows, ep, out_dir):
     names = ["shorts_A", "shorts_B"]
-    check_frame_audit(rows, "쇼츠", out_dir, expect_scenes=len(names))
+    check_frame_audit(rows, "쇼츠", out_dir, expect_scenes=len(names), scope="Short")
     for nm in names:
         tag = "쇼츠 %s" % nm[-1]
         mp4 = os.path.join(out_dir, "%s.mp4" % nm)

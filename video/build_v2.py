@@ -58,6 +58,21 @@ def _optval(name, default):
 
 # 음성 폴더 선택: 음성팀이 audio/를 재작업 중일 때 스냅샷(audio_take2 등)으로
 # 타이밍만 잡아 시안을 렌더할 수 있게 한다. 기본값은 기존과 동일한 audio/.
+# 부분 재렌더(청크) 옵션 — 긴 렌더가 외부 종료로 끊겼을 때 남은 구간만 다시 굽는다.
+#   --from-anim=N : N번 애니메이션부터 렌더(앞 구간은 계산만 하고 프레임을 굽지 않음)
+#   --no-mux      : 조립(오디오 먹싱·스펙검사)을 생략하고 파셜 생산만 — 청크를 이어붙일 때 사용
+# 배경(2026-07-30): 1080p 전량 렌더가 70분대에서 두 번 외부 종료됨. 파셜 무비 파일
+# (animation 단위 조각 영상)은 인덱스 이름으로 남으므로, 끊긴 지점부터 다시 구워
+# 전체를 이어붙이면 처음부터 다시 굽지 않아도 된다(rule7 — 순단은 운영 조건).
+#   --mux-only    : 렌더를 하지 않고, 이미 남아 있는 파셜 전량을 이어붙여 오디오만 먹싱
+#                   (청크 재렌더 뒤 복구용 — 결번·0바이트 파셜이 있으면 조립을 거부한다)
+#   --layout-audit: 프레임을 한 장도 굽지 않고 장면을 끝까지 '계산만' 해서 레이아웃
+#                   불변식(프레임 이탈·보호 영역 침범)만 판정한다. 70분 렌더 없이 몇 초.
+FROM_ANIM = _optval("from-anim", None)
+UPTO_ANIM = _optval("upto-anim", None)
+NO_MUX = "--no-mux" in sys.argv
+MUX_ONLY = "--mux-only" in sys.argv
+LAYOUT_AUDIT = "--layout-audit" in sys.argv
 AUDIO_SUB = _optval("audio-dir", "audio")
 AUDIO_DIR = os.path.join(OUT, AUDIO_SUB)
 # 렌더 규격(해상도·프레임률)의 단일 출처. 파일명·로그 표기·검사기 모두 이 값을 쓴다.
@@ -156,6 +171,24 @@ config.pixel_width, config.pixel_height, config.frame_rate = VW, VH, VFPS
 config.media_dir = os.path.join(OUT, "media")
 config.output_file = "ep_silent"
 config.disable_caching = True
+# 파셜 무비 파일(애니메이션 단위 조각 영상)을 하나도 버리지 않는다.
+# 기본값 100이면 101번째를 구울 때 가장 오래된 조각부터 지운다(manim scene_file_writer.clean_cache).
+# 3편 렌더가 외부 종료된 뒤 남은 조각으로 복구하려다, 앞부분 0~53번이 이미 지워진 것을 실측 발견
+# (2026-07-30). 조각을 남겨두면 끊긴 지점부터만 다시 구워 이어붙일 수 있다 — 153개 × 약 85KB로
+# 용량 부담도 미미하다. -1 = 무제한(manim default.cfg:137 주석 근거).
+config.max_files_cached = -1
+if FROM_ANIM is not None:
+    config.from_animation_number = int(FROM_ANIM)
+    print(f"[v2] 부분 렌더: {FROM_ANIM}번 애니메이션부터 굽는다(앞 구간은 계산만).")
+if UPTO_ANIM is not None:
+    config.upto_animation_number = int(UPTO_ANIM)
+    print(f"[v2] 부분 렌더: {UPTO_ANIM}번 애니메이션까지만 굽는다.")
+if LAYOUT_AUDIT:
+    # 전 애니메이션을 '건너뛰기' 상태로 통과시킨다 — mobject 상태는 정상 갱신되지만
+    # 프레임 인코딩이 없어 몇 초에 끝난다. 배치 검사 전용 모드.
+    config.from_animation_number = 10 ** 9
+    config.dry_run = True
+    print("[v2] 레이아웃 감사 모드: 프레임을 굽지 않고 배치 불변식만 판정한다.")
 
 MESH_P =[(-4.5, 1.6), (-2.2, 2.2), (0.2, 1.9), (2.6, 2.1), (4.6, 1.5),
           (-3.4, 0.1), (-1.0, 0.5), (1.4, 0.3), (3.6, 0.2),
@@ -175,6 +208,47 @@ def ktext(s, fs=36, color=INK, bold=False):
     if t.width > 13:
         t.scale_to_fit_width(13)
     return t
+
+
+def ktext_block(s, fs=24, color=GRAY, max_width=13.0, bold=False, buff=0.16,
+                aligned_edge=ORIGIN):
+    """긴 한 줄을 max_width 안에 담기도록 어절(띄어쓰기) 단위로 줄바꿈한 글자 덩어리.
+
+    쉬운 말: 글자 크기를 줄여 억지로 우겨넣는 대신 신문처럼 줄을 나눠 담는다.
+    글자를 줄이면 안 읽히고, 안 줄이면 옆 요소를 침범한다 — 그 사이의 정답이 줄바꿈이다.
+    (2026-07-30: 3편 아웃트로 예고 부제가 한 줄 7.28 폭으로 구독 버튼·예고 사진을
+    동시에 침범한 결함의 수리 수단. ktext() 의 scale_to_fit_width 는 폭만 맞추고
+    가독성을 버리므로 좁은 칸에는 부적합했다.)
+    """
+    lines, cur = [], ""
+    for w in s.split(" "):
+        cand = (cur + " " + w).strip()
+        probe = Text(cand, font=KFONT, font_size=fs,
+                     weight="BOLD" if bold else "NORMAL")
+        if cur and probe.width > max_width:
+            lines.append(cur)
+            cur = w
+        else:
+            cur = cand
+    if cur:
+        lines.append(cur)
+    mobs = []
+    for ln in lines:
+        m = Text(ln, font=KFONT, font_size=fs, color=color,
+                 weight="BOLD" if bold else "NORMAL")
+        if m.width > max_width:   # 한 어절이 통째로 칸을 넘으면 그 줄만 축소
+            m.scale_to_fit_width(max_width)
+        mobs.append(m)
+    return VGroup(*mobs).arrange(DOWN, buff=buff, aligned_edge=aligned_edge)
+
+
+def rect_overlap(a, b, eps=0.01):
+    """두 바운딩박스(왼,오른,아래,위)의 겹침 폭·높이. 안 겹치면 None.
+    eps: 맞닿음(gap 0)에서 부동소수 오차가 '겹침 1e-16'으로 오보되는 것을 막는 문턱값
+    (0.01 월드 단위 ≈ 1080p 에서 1.4픽셀 — 눈에 보이지 않는 크기)."""
+    ox = min(a[1], b[1]) - max(a[0], b[0])
+    oy = min(a[3], b[3]) - max(a[2], b[2])
+    return (ox, oy) if (ox > eps and oy > eps) else None
 
 
 def mtext(s, fs=48, color=INK, bold=True):
@@ -228,6 +302,246 @@ class EpisodeBase(Scene):
             else:
                 self.wait(GAP)
         self.wait(1.2)
+        self.report_layout()
+
+    # --- 레이아웃 불변식: 프레임 이탈 + 보호 영역 침범 (2026-07-30 신설) ----------
+    #
+    # 배경: 감사가 지적한 "본편 프레임 이탈 불변식 부재"(유형 A 누적 5회)에 더해,
+    # 3편 아웃트로에서 **프레임 안인데 요소끼리 겹치는** 새 유형이 나왔다
+    # (예고 부제가 구독 버튼 밑으로 파묻힘 — 2026-07-30 실측 가로 1.19 세로 0.10).
+    # fit_frame() 은 '액자 밖으로 나갔나'만 보므로 이 유형을 구조적으로 못 잡는다.
+    # 쇼츠(build_shorts.audit_frame)에만 있던 이탈 감사를 본편에 이식하고,
+    # '남의 자리를 밟았나'를 보는 보호 영역 감사를 함께 세운다(rule5-4 승격).
+    #
+    # 감사 시점은 매 play/wait 직후(애니메이션 종료 상태). 애니메이션 도중의
+    # 순간적 확대(FadeIn scale=1.5 등)는 이 검사 범위 밖 — 쇼츠와 동일한 한계다.
+    LAYOUT_MARGIN = 0.16   # 요소 사이 최소 여유(월드 단위, 프레임 폭 14.22 기준)
+
+    _zones = None       # 보호 영역(침범 금지 구역) 대장
+    _overflow = None    # 프레임 이탈 적발 기록
+    _intrusion = None   # 보호 영역 침범 적발 기록
+    _crowding = None    # 여유(마진)만 침범 — 경고
+
+    def _describe(self, m):
+        txts = [s.text for s in m.get_family() if isinstance(s, Text)]
+        if txts:
+            return "「" + " / ".join(t[:16] for t in txts[:2]) + "」"
+        return type(m).__name__
+
+    @staticmethod
+    def bbox(m, pad=0.0):
+        return (m.get_left()[0] - pad, m.get_right()[0] + pad,
+                m.get_bottom()[1] - pad, m.get_top()[1] + pad)
+
+    def reserve_zone(self, name, m, pad=None, owners=()):
+        """침범 금지 구역(보호 영역)을 등록한다.
+
+        쉬운 말: "여기는 나중에 구독 버튼이 앉을 자리니 비워둬"라고 미리 금줄을 치는 것.
+        아직 화면에 없는 요소의 자리도 예약할 수 있다 — 아웃트로는 예고 부제(먼저)와
+        CTA 버튼(나중)이 다른 컷에서 생기므로, 자리 예약 없이는 저자가 겹침을 볼 수 없다.
+        """
+        if self._zones is None:
+            self._zones = {}
+        pad = self.LAYOUT_MARGIN if pad is None else pad
+        box = self.bbox(m) if hasattr(m, "get_left") else tuple(m)
+        self._zones[name] = {"box": box, "pad": pad, "owners": set()}
+        if owners:
+            self.claim_zone(name, *owners)
+        return box
+
+    def claim_zone(self, name, *owners):
+        """보호 영역의 '주인'을 등록 — 주인은 자기 구역을 침범한 것으로 세지 않는다."""
+        z = (self._zones or {}).get(name)
+        if not z:
+            return
+        for o in owners:
+            z["owners"].add(id(o))
+            z["owners"].update(id(c) for c in o.get_family())
+
+    def _obstacles(self, exclude=()):
+        boxes = [(nm, z["box"], z["pad"]) for nm, z in (self._zones or {}).items()]
+        boxes += [(self._describe(m), self.bbox(m), self.LAYOUT_MARGIN) for m in exclude]
+        return boxes
+
+    def free_x_band(self, y_lo, y_hi, anchor=0.0, exclude=(), pad=None):
+        """세로 [y_lo, y_hi] 구간에서 보호 영역·지정 요소를 피해 쓸 수 있는 가로 구간.
+
+        반환: (왼쪽 한계, 오른쪽 한계, 폭). 저자가 폭 상한을 눈대중이 아니라 수치로 잡게 한다
+        — 3편 결함의 직접 원인은 "이 정도면 들어가겠지"라는 눈대중이었다(rule6).
+        """
+        pad = self.LAYOUT_MARGIN if pad is None else pad
+        left = -config.frame_width / 2 + pad
+        right = config.frame_width / 2 - pad
+        for _nm, (l, r, b, t), zpad in self._obstacles(exclude):
+            if t + zpad <= y_lo or b - zpad >= y_hi:   # 세로로 안 겹치면 가로를 막지 않는다
+                continue
+            if r + zpad <= anchor:
+                left = max(left, r + zpad)
+            elif l - zpad >= anchor:
+                right = min(right, l - zpad)
+            else:                                       # 기준점을 덮은 장애물 — 넓은 쪽을 취함
+                if (l - zpad) - left >= right - (r + zpad):
+                    right = min(right, l - zpad)
+                else:
+                    left = max(left, r + zpad)
+        return left, right, max(0.0, right - left)
+
+    def avoid_zones(self, m, pad=None, allow_shrink=True, rounds=4):
+        """m 이 보호 영역을 침범하면 자동 회피시킨다 — fit_frame() 의 '겹침' 짝.
+
+        순서: ①가로로 살짝 밀어내기 ②(폭이 남는 칸보다 크면) 폭 줄이기 ③세로로 밀어내기.
+        밀어낸 뒤 프레임 이탈을 다시 막는다(회피가 새 결함을 만들지 않게).
+        완전한 자동 배치는 아니고 '작은 겹침의 자동 해소'용 — 큰 충돌은 감사가 적발해
+        저자가 재배치하도록 남긴다(조용히 예쁘지 않게 고치는 것보다 시끄럽게 막는 게 낫다).
+        """
+        pad = self.LAYOUT_MARGIN if pad is None else pad
+        for _ in range(rounds):
+            worst = None
+            for nm, z in (self._zones or {}).items():
+                if id(m) in z["owners"]:
+                    continue
+                ov = rect_overlap(self.bbox(m, pad * 0.5), z["box"])
+                if ov and (worst is None or min(ov) > min(worst[1])):
+                    worst = (nm, ov, z)
+            if worst is None:
+                break
+            _nm, (ox, oy), z = worst
+            zl, zr, zb, zt = z["box"]
+            l, r, b, t = self.bbox(m)
+            band_l, band_r, band_w = self.free_x_band(b, t, anchor=(l + r) / 2, pad=pad)
+            if allow_shrink and (r - l) > band_w > 0.8:
+                m.scale_to_fit_width(band_w)
+                m.move_to(P3(((band_l + band_r) / 2, (b + t) / 2)))
+            elif ox <= oy:                        # 가로로 비켜 가는 편이 싸다
+                away = -1.0 if (l + r) / 2 <= (zl + zr) / 2 else 1.0
+                m.shift(RIGHT * (ox + pad * 0.5) * away)
+            else:
+                away = 1.0 if (b + t) / 2 >= (zb + zt) / 2 else -1.0
+                m.shift(UP * (oy + pad * 0.5) * away)
+            self.fit_frame(m)
+        return m
+
+    def audit_layout(self):
+        """지금 무대에 올라 있는 모든 요소를 상대로 두 불변식을 기계 판정한다."""
+        if self._overflow is None:
+            self._overflow, self._intrusion, self._crowding = {}, {}, {}
+        hw, hh = config.frame_width / 2, config.frame_height / 2
+        for m in self.mobjects:
+            if m is self.subtitle:
+                continue
+            try:
+                l, r, b, t = self.bbox(m)
+            except Exception:  # noqa: BLE001  (좌표를 못 내는 특수 mobject는 건너뜀)
+                continue
+            ox = max(0.0, -hw - l, r - hw)
+            oy = max(0.0, -hh - b, t - hh)
+            if max(ox, oy) > 0.02:
+                k = self._describe(m)
+                p = self._overflow.get(k, (0.0, 0.0))
+                self._overflow[k] = (max(p[0], ox), max(p[1], oy))
+            for nm, z in (self._zones or {}).items():
+                if id(m) in z["owners"]:
+                    continue
+                hard = rect_overlap((l, r, b, t), z["box"])
+                if hard:
+                    k = f"{self._describe(m)} ↔ {nm}"
+                    p = self._intrusion.get(k, (0.0, 0.0))
+                    self._intrusion[k] = (max(p[0], hard[0]), max(p[1], hard[1]))
+                    continue
+                zl, zr, zb, zt = z["box"]
+                pz = (zl - z["pad"], zr + z["pad"], zb - z["pad"], zt + z["pad"])
+                soft = rect_overlap((l, r, b, t), pz)
+                if soft:
+                    k = f"{self._describe(m)} ↔ {nm}"
+                    self._crowding[k] = max(self._crowding.get(k, 0.0), min(soft))
+
+    def report_layout(self):
+        """[audit] 줄 출력 — verify_output_spec.py 가 이 줄을 읽어 PASS/FAIL을 판정한다.
+        (형식을 바꾸면 검사기의 정규식도 같이 고쳐야 한다: verify_output_spec.audit_lines)"""
+        name = type(self).__name__
+        ov = self._overflow or {}
+        it = self._intrusion or {}
+        cr = self._crowding or {}
+        print(f"[audit] {name}: 프레임 이탈 {len(ov)}건")
+        for k, (ox, oy) in sorted(ov.items(), key=lambda x: -max(x[1])):
+            print(f"    - 이탈 {k}: 가로 +{ox:.2f} / 세로 +{oy:.2f}")
+        print(f"[audit] {name}: 보호영역 침범 {len(it)}건 "
+              f"(등록 구역 {len(self._zones or {})}개)")
+        for k, (ox, oy) in sorted(it.items(), key=lambda x: -min(x[1])):
+            print(f"    - 침범 {k}: 겹침 가로 {ox:.2f} / 세로 {oy:.2f}")
+        if cr:
+            print(f"[audit] {name}: 여유 침범(경고) {len(cr)}건 — 겹치진 않으나 "
+                  f"최소 여유 {self.LAYOUT_MARGIN} 미달")
+            for k, v in sorted(cr.items(), key=lambda x: -x[1]):
+                print(f"    - 근접 {k}: 여유 잔량 {self.LAYOUT_MARGIN - v:.2f}")
+
+    def play(self, *a, **kw):
+        super().play(*a, **kw)
+        self.audit_layout()
+
+    def wait(self, *a, **kw):
+        super().wait(*a, **kw)
+        self.audit_layout()
+
+    # --- 아웃트로 CTA(구독·좋아요) — 자리 예약과 실제 버튼이 같은 출처를 쓴다 -------
+    # 예약(예고 부제를 배치하는 컷)과 생성(버튼이 뜨는 컷)이 서로 다른 좌표를 쓰면
+    # 예약이 거짓말이 된다. 그래서 좌표를 편별 CTA 스펙 한 곳에만 둔다.
+    CTA = None   # dict(pos=, w=, h=, buff=, like=bool, fs=(구독,좋아요), cc=코너, cc_shift=)
+
+    def cc_badge(self):
+        """아웃트로 © 배지 — 위치를 CTA 스펙 한 곳에서 가져온다(자리 예약과 동일 출처)."""
+        spec = self.CTA or {}
+        cc = Text("© nous-zero", font=KFONT, font_size=22, color=LGRAY)
+        cc.to_corner(spec.get("cc", DR), buff=0.4)
+        if spec.get("cc_shift") is not None:
+            cc.shift(spec["cc_shift"])
+        return cc
+
+    def cta_group(self):
+        spec = self.CTA
+        sub_box = RoundedRectangle(corner_radius=0.3, width=spec["w"], height=spec["h"])
+        sub_box.set_stroke(width=0).set_fill(RED, 1)
+        sub_t = ktext("구독", spec["fs"][0], WHITE, bold=True).move_to(sub_box)
+        sub_btn = VGroup(sub_box, sub_t).move_to(spec["pos"])
+        parts = [sub_btn]
+        if spec.get("like"):
+            like_box = RoundedRectangle(corner_radius=0.3, width=spec["w"], height=spec["h"])
+            like_box.set_stroke(BLUE, 4).set_fill(WHITE, 1)
+            like_t = ktext("좋아요", spec["fs"][1], BLUE, bold=True).move_to(like_box)
+            parts.append(VGroup(like_box, like_t).next_to(sub_btn, DOWN,
+                                                          buff=spec.get("buff", 0.25)))
+        grp = VGroup(*parts)
+        self.fit_frame(grp)   # 프레임 이탈 방어(3편 좋아요 6.7px 잘림 재발 방지)
+        return grp, parts
+
+    CTA_ZONE = "CTA(구독·좋아요)"
+    CC_ZONE = "© 배지"
+
+    def reserve_cta(self):
+        """CTA 버튼·© 배지가 앉을 자리를 미리 금줄 친다 — 이들보다 먼저 그려지는 요소용.
+        아웃트로는 예고 문구(먼저)와 CTA·©(나중)가 다른 컷에서 생기므로, 예약 없이는
+        저자도 검사기도 겹침을 볼 수 없다 — 3편 결함이 발행 직전까지 살아남은 이유."""
+        ghost, _ = self.cta_group()
+        a = self.reserve_zone(self.CTA_ZONE, ghost)
+        b = self.reserve_zone(self.CC_ZONE, self.cc_badge())
+        return a, b
+
+    def show_cta(self, d):
+        """아웃트로 CTA 등장 — 1·2·3편 공통 문법."""
+        grp, parts = self.cta_group()
+        cc = self.cc_badge()
+        for nm, owners in ((self.CTA_ZONE, [grp, *parts]), (self.CC_ZONE, [cc])):
+            if nm in (self._zones or {}):
+                self.claim_zone(nm, *owners)
+            else:
+                self.reserve_zone(nm, owners[0], owners=owners)
+        t1 = max(0.4, min(0.9, d * 0.35))
+        self.play(*[FadeIn(p, scale=1.5 if i == 0 else 1.3) for i, p in enumerate(parts)],
+                  run_time=t1)
+        t2 = max(0.3, min(0.5, d * 0.2))
+        self.play(Indicate(parts[0], color=RED, scale_factor=1.12), FadeIn(cc), run_time=t2)
+        self.hold(d - t1 - t2)
+        return grp
 
     # --- 공통 도우미 ---
     def sub(self, txt):
@@ -325,6 +639,8 @@ class EpisodeBase(Scene):
 
 class Episode01(EpisodeBase):
     CLEAR_AFTER = {2, 3, 5, 6, 7, 8, 9, 11, 12, 13}
+    CTA = {"pos": RIGHT * 2.8 + DOWN * 0.9, "w": 2.6, "h": 0.85,
+           "like": False, "fs": (40, 34), "cc": DR, "cc_shift": UP * 0.55}
 
     # --- 인트로 ---
     def intro(self):
@@ -860,22 +1176,16 @@ class Episode01(EpisodeBase):
             self.act(d, FadeIn(self.st["cal"], scale=1.15))
 
         def a1(d):
+            # CTA 자리를 먼저 예약하고, 예고 문구는 그 금줄을 피해 배치한다.
+            self.reserve_cta()
             tag = chip("NCP → TCP/IP", INK, 30).move_to(RIGHT * 2.8 + UP * 1.3)
             sub2 = ktext("하루 만에 언어를 갈아탄 날", 30, GRAY).next_to(tag, DOWN, buff=0.4)
+            self.avoid_zones(tag)
+            self.avoid_zones(sub2)
             self.act(d, FadeIn(tag, scale=1.2), FadeIn(sub2, shift=UP * 0.15))
 
         def a2(d):
-            btn_box = RoundedRectangle(corner_radius=0.3, width=2.6, height=0.85)
-            btn_box.set_stroke(width=0).set_fill(RED, 1)
-            btn_t = ktext("구독", 40, WHITE, bold=True).move_to(btn_box)
-            btn = VGroup(btn_box, btn_t).move_to(RIGHT * 2.8 + DOWN * 0.9)
-            cc = Text("© nous-zero", font=KFONT, font_size=22, color=LGRAY)
-            cc.to_corner(DR, buff=0.4).shift(UP * 0.55)
-            t1 = max(0.4, min(0.9, d * 0.35))
-            self.play(FadeIn(btn, scale=1.5), run_time=t1)
-            t2 = max(0.3, min(0.5, d * 0.2))
-            self.play(Indicate(btn, color=RED, scale_factor=1.12), FadeIn(cc), run_time=t2)
-            self.hold(d - t1 - t2)
+            self.show_cta(d)
 
         self.run_beats(S, [a0, a1, a2])
 
@@ -887,6 +1197,8 @@ class Episode02(EpisodeBase):
     · cerf_kahn(초상 2 + 훈장 보조) · flagday(BBN 1982 지도 줌) · badge(자체 재현 — 표기 필수).
     원리 장면(envelope, ip_tcp_roles, ncp_problem, ipv6_twist 등)은 도형 유지."""
     CLEAR_AFTER = {0, 1, 5, 6, 7, 10, 11, 12, 13}
+    CTA = {"pos": RIGHT * 3.1 + DOWN * 0.9, "w": 2.6, "h": 0.85,
+           "like": True, "buff": 0.3, "fs": (40, 34), "cc": DR}
 
     def intro(self):
         title = mtext("TCP/IP", fs=110, color=INK).move_to(UP * 0.9)
@@ -1464,29 +1776,18 @@ class Episode02(EpisodeBase):
                      Indicate(self.st["bubble"], color=BLUE, scale_factor=1.03))
 
         def a2(d):
+            self.reserve_cta()
+            band_l, band_r, band_w = self.free_x_band(-2.0, -0.5, anchor=-2.9)
             tag = chip("#03 — 웹(Web)의 탄생", INK, 30).move_to(DOWN * 0.85 + LEFT * 2.9)
-            teaser = ktext("도로는 깔렸는데, 실어 나를 짐이 없었다", 27, GRAY)
+            teaser = ktext_block("도로는 깔렸는데, 실어 나를 짐이 없었다", 27, GRAY,
+                                 max_width=min(13.0, band_w))
             teaser.next_to(tag, DOWN, buff=0.3)
+            self.avoid_zones(tag)
+            self.avoid_zones(teaser)
             self.act(d, FadeIn(tag, scale=1.15), FadeIn(teaser, shift=UP * 0.15))
 
         def a3(d):
-            btn_box = RoundedRectangle(corner_radius=0.3, width=2.6, height=0.85)
-            btn_box.set_stroke(width=0).set_fill(RED, 1)
-            btn_t = ktext("구독", 40, WHITE, bold=True).move_to(btn_box)
-            sub_btn = VGroup(btn_box, btn_t).move_to(RIGHT * 3.1 + DOWN * 0.9)
-            like_box = RoundedRectangle(corner_radius=0.3, width=2.6, height=0.85)
-            like_box.set_stroke(BLUE, 4).set_fill(WHITE, 1)
-            like_t = ktext("좋아요", 34, BLUE, bold=True).move_to(like_box)
-            like_btn = VGroup(like_box, like_t).next_to(sub_btn, DOWN, buff=0.3)
-            cc = Text("© nous-zero", font=KFONT, font_size=22, color=LGRAY)
-            cc.to_corner(DR, buff=0.4)
-            t1 = max(0.4, min(0.9, d * 0.35))
-            self.play(FadeIn(sub_btn, scale=1.5), FadeIn(like_btn, scale=1.3),
-                      run_time=t1)
-            t2 = max(0.3, min(0.5, d * 0.2))
-            self.play(Indicate(sub_btn, color=RED, scale_factor=1.12), FadeIn(cc),
-                      run_time=t2)
-            self.hold(d - t1 - t2)
+            self.show_cta(d)
 
         self.run_beats(S, [a0, a1, a2, a3])
 
@@ -1513,6 +1814,8 @@ class Episode03(EpisodeBase):
     소재 부재 시 PLACEHOLDER 카드(장면명 표기)로 렌더가 소재 지연에 볼모 잡히지 않게 한다."""
     CLEAR_AFTER = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13}
     PLACEHOLDERS_USED = []  # 렌더에 실제 쓰인 플레이스홀더 장면명 (보고용)
+    CTA = {"pos": RIGHT * 5.2 + DOWN * 2.6, "w": 2.3, "h": 0.8,
+           "like": True, "buff": 0.25, "fs": (36, 30), "cc": DL}
 
     def intro(self):
         title = mtext("WWW", fs=110, color=INK).move_to(UP * 0.9)
@@ -2157,38 +2460,47 @@ class Episode03(EpisodeBase):
                      Indicate(self.st["bubble"], color=BLUE, scale_factor=1.03))
 
         def a2(d):
-            ph, _ = self.ep_photo("next", height=2.6, pos=LEFT * 3.9 + DOWN * 1.6)
+            # 아웃트로 결함 2건 수리(2026-07-30 191.5초 프레임 실측 → release-director 지적).
+            #  ①예고 부제가 우하단 구독 버튼 밑으로 파묻힘(가로 1.19 세로 0.10 겹침)
+            #    + 예고 사진과도 겹침(가로 0.79 세로 0.33) — 프레임 안이라 fit_frame() 무력.
+            #    → CTA 자리를 미리 예약(reserve_cta)하고, 사진·CTA를 피한 '남는 칸' 폭을
+            #      실측해(free_x_band) 그 폭에 맞춰 줄바꿈(ktext_block)한다.
+            #  ②최초 웹사이트 화면(ep03_next.png = ep03_first_website.png, md5 동일)에
+            #    '재현 화면' 표기 누락 — 본문 seg10 에는 있는데 아웃트로에는 빠져 있어,
+            #    나란한 '#04 모자이크' 예고 때문에 모자이크 화면으로 오인될 수 있었다
+            #    (법무 조건-2 재현 표기의 취지). seg10 과 같은 양식의 캡션을 붙인다.
+            # 세로 예산: 댓글로 칩 아래(0.28) ~ © 배지 위(-3.37) = 3.65 안에
+            # [사진 + 여백 0.22 + 캡션 0.70] 이 들어가야 한다 → 사진 높이 상한 약 2.41.
+            # 표기를 넣느라 사진을 2.6→2.3 으로 줄인 것(7% 축소, 좌측 여백은 그대로).
+            # 이 수치는 눈대중이 아니라 --layout-audit 이 © 배지 침범 1.68×0.23 을
+            # 적발해서 나온 값이다.
+            self.reserve_cta()
+            ph, _ = self.ep_photo("next", height=2.3, pos=LEFT * 3.9 + DOWN * 1.05)
+            cap = chip("최초의 웹사이트 (재현 화면)", GRAY, 20)
+            cap.next_to(ph, DOWN, buff=0.22)
+            shot = Group(ph, cap)          # 사진과 표기는 한 덩어리로 뜨고 진다
+            # 예고컷도 보호 영역으로 등록 — 예고 문구가 사진 위로 올라타지 못하게
+            # 기계로 막는다(예전엔 #04 태그가 사진 테두리를 0.25 밟고 있었다).
+            self.reserve_zone("예고컷(재현 화면)", shot, owners=[shot, ph, cap])
             tag = chip("#04 — 모자이크 & 넷스케이프", INK, 28)
             tag.move_to(RIGHT * 1.6 + DOWN * 1.1)
-            teaser = ktext("밋밋한 웹에 처음 그림을 띄운, 대학 시급 알바생", 24, GRAY)
-            teaser.next_to(tag, DOWN, buff=0.28)
+            self.avoid_zones(tag)          # 사진·CTA 를 침범하면 자동으로 비켜 간다
+            band_l, band_r, band_w = self.free_x_band(-2.75, -1.6, anchor=1.6)
+            teaser = ktext_block("밋밋한 웹에 처음 그림을 띄운, 대학 시급 알바생", 24, GRAY,
+                                 max_width=band_w, aligned_edge=LEFT)
+            teaser.next_to(tag, DOWN, buff=0.26, aligned_edge=LEFT)
+            if teaser.get_right()[0] > band_r:      # 왼쪽 정렬로 넘치면 남는 칸 안으로
+                teaser.shift(RIGHT * (band_r - teaser.get_right()[0]))
+            if teaser.get_left()[0] < band_l:
+                teaser.shift(RIGHT * (band_l - teaser.get_left()[0]))
             t1 = max(0.3, min(0.7, d * 0.3))
-            self.show_photo(ph, t1)
+            self.show_photo(shot, t1)
             t2 = max(0.3, min(0.8, d * 0.3))
             self.play(FadeIn(tag, scale=1.15), FadeIn(teaser, shift=UP * 0.15), run_time=t2)
             self.hold(d - t1 - t2)
 
         def a3(d):
-            btn_box = RoundedRectangle(corner_radius=0.3, width=2.3, height=0.8)
-            btn_box.set_stroke(width=0).set_fill(RED, 1)
-            btn_t = ktext("구독", 36, WHITE, bold=True).move_to(btn_box)
-            sub_btn = VGroup(btn_box, btn_t).move_to(RIGHT * 5.2 + DOWN * 2.6)
-            like_box = RoundedRectangle(corner_radius=0.3, width=2.3, height=0.8)
-            like_box.set_stroke(BLUE, 4).set_fill(WHITE, 1)
-            like_t = ktext("좋아요", 30, BLUE, bold=True).move_to(like_box)
-            like_btn = VGroup(like_box, like_t).next_to(sub_btn, DOWN, buff=0.25)
-            # 두 버튼을 한 덩어리로 묶어 프레임 안으로 밀어 넣는다.
-            # (기존: 좋아요 하단 y=-4.05 < 프레임 -4.0 → 6.7px 잘림 — 2026-07-30 실측)
-            self.fit_frame(VGroup(sub_btn, like_btn))
-            cc = Text("© nous-zero", font=KFONT, font_size=22, color=LGRAY)
-            cc.to_corner(DL, buff=0.4)
-            t1 = max(0.4, min(0.9, d * 0.35))
-            self.play(FadeIn(sub_btn, scale=1.5), FadeIn(like_btn, scale=1.3),
-                      run_time=t1)
-            t2 = max(0.3, min(0.5, d * 0.2))
-            self.play(Indicate(sub_btn, color=RED, scale_factor=1.12), FadeIn(cc),
-                      run_time=t2)
-            self.hold(d - t1 - t2)
+            self.show_cta(d)
 
         self.run_beats(S, [a0, a1, a2, a3])
 
@@ -2223,6 +2535,99 @@ def build_audio():
     path = os.path.join(OUT, f"{OUT_STEM}_track.wav")
     track.export(path, format="wav")
     return path
+
+
+def partial_dir():
+    return os.path.join(OUT, "media", "videos", f"{VH}p{VFPS}",
+                        "partial_movie_files", f"Episode{EP}")
+
+
+def assemble_partials():
+    """파셜(애니메이션 단위 조각 영상) 전량을 번호순으로 이어붙여 무음 영상을 만든다.
+
+    쉬운 말: 필름 조각 153장을 번호대로 이어 붙여 한 롤로 만드는 일.
+    구간만 다시 구운 뒤(--from-anim) 전체를 복원할 때 쓴다 — 전량 재렌더(70분)를
+    피하는 정식 경로. 결번(빠진 번호)이나 0바이트 조각이 있으면 **조립을 거부**한다:
+    조용히 이어붙이면 내용이 누락된 채 길이만 맞아 검사기도 속는다.
+    (2026-07-30 임시 스크립트로 하던 복구를 정식 옵션으로 편입 — 재발 시 즉시 복구.)
+    """
+    part = partial_dir()
+    files = sorted(glob.glob(os.path.join(part, "uncached_*.mp4")),
+                   key=lambda p: int(re.search(r"uncached_(\d+)", p).group(1)))
+    if not files:
+        print(f"[v2] 오류: 파셜이 없다 — {part}")
+        return None
+    nums = [int(re.search(r"uncached_(\d+)", p).group(1)) for p in files]
+    missing = [n for n in range(max(nums) + 1) if n not in set(nums)]
+    zero = [os.path.basename(p) for p in files if os.path.getsize(p) == 0]
+    print(f"[v2] 파셜 {len(files)}개 (0~{max(nums)}) | 결번 {len(missing)}개 | "
+          f"0바이트 {len(zero)}개")
+    if missing or zero:
+        print(f"[v2] *** 조립 거부: 결번 {missing[:10]} / 0바이트 {zero[:5]} — "
+              f"빠진 구간을 --from-anim 으로 다시 구운 뒤 재시도 ***")
+        return None
+    lst = os.path.join(OUT, "_concat_all.txt")
+    with open(lst, "w", encoding="utf-8", newline="\n") as f:
+        for p in files:
+            f.write("file '" + p.replace("\\", "/") + "'\n")
+    import imageio_ffmpeg
+    ff = imageio_ffmpeg.get_ffmpeg_exe()
+    silent = os.path.join(OUT, "_ep_full_silent.mp4")
+    print("[v2] 이어붙이기 ...")
+    r = subprocess.run([ff, "-hide_banner", "-loglevel", "error", "-y", "-f", "concat",
+                        "-safe", "0", "-i", lst, "-c", "copy", silent],
+                       capture_output=True, text=True, errors="replace")
+    if r.returncode != 0:
+        print("[v2] 오류: concat 실패 —", (r.stderr or "")[-600:])
+        return None
+    return silent
+
+
+def mux_only():
+    """--mux-only: 렌더 없이 파셜 전량 조립 + 오디오 먹싱 → episode.mp4 갱신."""
+    if not FULL:
+        print("[v2] 오류: --mux-only 는 --full(완성 규격) 에서만 쓴다.")
+        return 1
+    silent = assemble_partials()
+    if not silent:
+        return 1
+    import imageio_ffmpeg
+    ff = imageio_ffmpeg.get_ffmpeg_exe()
+    track = os.path.join(OUT, f"{OUT_STEM}_track.wav")
+    if os.path.exists(track):
+        # 확정된 오디오 트랙(라우드니스 정규화분)을 재생성으로 덮어쓰지 않는다.
+        print(f"[v2] 기존 오디오 트랙 사용(재생성 안 함): {os.path.basename(track)} "
+              f"{wav_seconds(track):.2f}s")
+    else:
+        print("[v2] 오디오 트랙이 없어 세그 wav 로 새로 만든다.")
+        track = build_audio()
+    srt = os.path.join(OUT, f"{OUT_STEM}.srt")
+    if not os.path.exists(srt):
+        srt = build_srt()
+    vdur = probe_duration(ff, silent)
+    adur = wav_seconds(track)
+    print(f"[v2] 무음 영상 {vdur:.2f}s / 오디오 {adur:.2f}s (차 {vdur - adur:+.2f}s)")
+    if vdur + 0.05 < adur:
+        print("[v2] *** 조립 거부: 영상이 오디오보다 짧다 — 내레이션 끝이 잘린다 ***")
+        return 1
+    final = os.path.join(OUT, OUT_NAME)
+    r = subprocess.run([ff, "-hide_banner", "-loglevel", "error", "-y", "-i", silent,
+                        "-i", track, "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", final],
+                       capture_output=True, text=True, errors="replace")
+    if r.returncode != 0:
+        print("[v2] 오류: 먹싱 실패 —", (r.stderr or "")[-600:])
+        return 1
+    print(f"[v2] 완성({VW}x{VH} {VFPS}fps): {final} — "
+          f"{probe_duration(ff, final):.2f}s / {os.path.getsize(final) / 1e6:.1f}MB")
+    print(f"[v2] 자막: {srt}")
+    return run_spec_check("--body")
+
+
+def probe_duration(ff, path):
+    out = subprocess.run([ff, "-hide_banner", "-i", path, "-f", "null", "-"],
+                         capture_output=True, text=True, errors="replace").stderr or ""
+    m = re.search(r"Duration: (\d+):(\d+):([\d.]+)", out)
+    return (int(m.group(1)) * 3600 + int(m.group(2)) * 60 + float(m.group(3))) if m else -1.0
 
 
 def run_spec_check(scope):
@@ -2264,8 +2669,17 @@ def main():
     if EP not in episodes:
         print(f"[v2] 오류: {EP}편 장면 클래스가 없음 (지원: {', '.join(episodes)})")
         sys.exit(1)
+    if MUX_ONLY:
+        sys.exit(mux_only() or 0)
     scene = episodes[EP]()
     scene.render()
+    if LAYOUT_AUDIT:
+        print("[v2] 레이아웃 감사 종료 — 위 [audit] 줄이 판정 결과다(영상 미생성).")
+        return
+
+    if NO_MUX:
+        print("[v2] --no-mux: 파셜 생산만 하고 조립을 생략한다(청크 이어붙이기는 호출 측이 수행).")
+        return
 
     hits = glob.glob(os.path.join(OUT, "media", "**", "ep_silent.mp4"), recursive=True)
     if not hits:
