@@ -406,23 +406,27 @@ def body_bgm_rule(ep):
     return required, rule
 
 
-def check_frame_audit(rows, tag, out_dir, expect_scenes=2, scope=""):
+def check_frame_audit(rows, tag, out_dir, expect_scenes=2, scope="", axes=None):
     """레이아웃 감사 로그 판정 — ①프레임 이탈 ②보호영역 침범(요소 간 겹침).
 
     ※ 로그에 찍히는 이름은 산출물 이름(shorts_A)이 아니라 Manim 장면 클래스 이름
     (Short03A·Episode03 등)이다 — `name = type(self).__name__`.
     그래서 이름을 미리 정해두고 찾으면 영원히 '미확인'이 된다. 찾은 이름을 그대로
     보고하는 방식으로 둔다(편마다 클래스 이름이 다른 것에도 자동 대응)."""
+    # axes: 이 산출물에서 기대하는 감사 축. 쇼츠(build_shorts.py)에는 보호 영역 기능이
+    # 아직 없으므로 그 축을 요구하지 않는다 — 있을 수 없는 줄을 기다리며 영원히 경고를
+    # 띄우면 경고 자체가 무뎌진다(경보 피로).
+    axes = AUDIT_AXES if axes is None else axes
     hits = audit_lines(out_dir)
     if scope:      # 본편/쇼츠 장면 이름이 한 폴더에 섞여 있으므로 접두어로 가른다
         hits = {k: v for k, v in hits.items() if k.startswith(scope)}
     if not hits:
-        for axis in AUDIT_AXES:
+        for axis in axes:
             rows.append(Row(tag, axis, "미확인", "0건", "WARN",
                             "렌더 로그에 [audit] 줄 없음 — 렌더 미실행이거나 로그 미보존"))
         return
     for nm in sorted(hits):
-        for axis in AUDIT_AXES:
+        for axis in axes:
             h = hits[nm].get(axis)
             if h is None:
                 rows.append(Row(tag, "%s(%s)" % (axis, nm), "미확인", "0건", "WARN",
@@ -545,7 +549,8 @@ def verify_body(rows, ep, out_dir):
 
 def verify_shorts(rows, ep, out_dir):
     names = ["shorts_A", "shorts_B"]
-    check_frame_audit(rows, "쇼츠", out_dir, expect_scenes=len(names), scope="Short")
+    check_frame_audit(rows, "쇼츠", out_dir, expect_scenes=len(names), scope="Short",
+                      axes=("프레임 이탈",))
     for nm in names:
         tag = "쇼츠 %s" % nm[-1]
         mp4 = os.path.join(out_dir, "%s.mp4" % nm)
