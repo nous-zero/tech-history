@@ -89,6 +89,12 @@ def FadeIn(m, **kw):  # noqa: F811
     return _FadeIn(m, **kw)
 
 
+# [P2 / 2026-07-29 감사 처방] 시안·완성본 파일명 분리.
+# build_v2 와 같은 함정이 여기에도 있었다 — 시안(540x960)이 완성본과 같은 shorts_A.mp4 를
+# 덮어써서, 파일명만 보고는 무엇이 최종인지 알 수 없었다. 시안은 '_draft' 를 강제한다.
+# refs/audit-reports/2026-07-29-quality-gate-failure.md §3-P2, 근본원인 R4.
+NAME_SUFFIX = "" if FULL else "_540p_draft"
+
 config.background_color = DARK
 config.frame_width = 9.0
 config.frame_height = 16.0
@@ -1314,19 +1320,23 @@ def build(short_cls, name):
     if vsec + 0.2 > len(track) / 1000.0:
         track += AudioSegment.silent(duration=int((vsec + 0.2 - len(track) / 1000.0) * 1000))
     assert len(track) / 1000.0 >= vsec, f"{name}: 오디오({len(track)/1000:.2f}s) < 영상({vsec:.2f}s)"
-    bgm_path = os.path.join(OUT, f"{name}_bgm.wav")
+    out_name = f"{name}{NAME_SUFFIX}"
+    bgm_path = os.path.join(OUT, f"{out_name}_bgm.wav")
     make_bgm(len(track) / 1000 + 0.5, bgm_path)
     bgm = AudioSegment.from_wav(bgm_path).apply_gain(-13)
     track = bgm[:len(track)].overlay(track)  # 비트 위에 육성
-    apath = os.path.join(OUT, f"{name}_audio.wav")
+    apath = os.path.join(OUT, f"{out_name}_audio.wav")
     track.export(apath, format="wav")
     import imageio_ffmpeg
-    final = os.path.join(OUT, f"{name}.mp4")
+    final = os.path.join(OUT, f"{out_name}.mp4")
     subprocess.run([imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-i", silent, "-i", apath,
                     "-c:v", "libx264", "-crf", "23", "-preset", "medium",
                     "-c:a", "aac", "-b:a", "128k", "-shortest", final],
                    check=True, capture_output=True)
-    print(f"[shorts] {name}: {final} ({len(track) / 1000:.0f}초 오디오)")
+    # [P2] '완성'은 --full 에서만. 시안은 해상도를 문구에 함께 표기한다.
+    tag = (f"완성({config.pixel_width}x{config.pixel_height} {config.frame_rate}fps)" if FULL
+           else f"시안({config.pixel_width}x{config.pixel_height} {config.frame_rate}fps) — 최종본 아님")
+    print(f"[shorts] {name} {tag}: {final} ({len(track) / 1000:.0f}초 오디오)")
 
 
 SHORTS = {"01": ((ShortA, "shorts_A"), (ShortB, "shorts_B")),

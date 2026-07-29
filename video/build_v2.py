@@ -52,8 +52,18 @@ def _optval(name, default):
 # 타이밍만 잡아 시안을 렌더할 수 있게 한다. 기본값은 기존과 동일한 audio/.
 AUDIO_SUB = _optval("audio-dir", "audio")
 AUDIO_DIR = os.path.join(OUT, AUDIO_SUB)
+# 렌더 규격(해상도·프레임률)의 단일 출처. 파일명·로그 표기·검사기 모두 이 값을 쓴다.
+VW, VH, VFPS = (1920, 1080, 30) if FULL else (854, 480, 15)
+
 # 출력 파일명 선택: 시안을 episode.mp4 와 다른 이름으로 남겨 최종본과 섞이지 않게.
-OUT_NAME = _optval("out-name", "episode.mp4")
+# [P2 / 2026-07-29 감사 처방] 시안(비 --full)이 최종 파일명(episode.mp4)을 차지한 채
+# 발행 직전까지 간 사고(854x480 본편) 재발 방지 — 시안 산출물은 '_draft' 를 강제한다.
+# refs/audit-reports/2026-07-29-quality-gate-failure.md §3-P2, 근본원인 R4(도구가 오인 유발).
+OUT_NAME = _optval("out-name", "episode.mp4" if FULL else f"episode_{VH}p_draft.mp4")
+if not FULL and "_draft" not in OUT_NAME:
+    _stem, _ext = os.path.splitext(OUT_NAME)
+    OUT_NAME = f"{_stem}_{VH}p_draft{_ext or '.mp4'}"
+    print(f"[v2] 시안 모드 — 최종 파일명 보호: 출력명을 {OUT_NAME} 로 강제")
 OUT_STEM = os.path.splitext(OUT_NAME)[0]
 os.makedirs(OUT, exist_ok=True)
 
@@ -134,10 +144,7 @@ from manim import (  # noqa: E402
 ASSETS = os.path.join(ROOT, "video", "output", "assets")  # 실사 사료(퍼블릭 도메인 검증분)
 
 config.background_color = WHITE
-if FULL:
-    config.pixel_width, config.pixel_height, config.frame_rate = 1920, 1080, 30
-else:
-    config.pixel_width, config.pixel_height, config.frame_rate = 854, 480, 15
+config.pixel_width, config.pixel_height, config.frame_rate = VW, VH, VFPS
 config.media_dir = os.path.join(OUT, "media")
 config.output_file = "ep_silent"
 config.disable_caching = True
@@ -2185,8 +2192,8 @@ def build_audio():
 
 
 def main():
-    print(f"[v2] {EP}편 | 음성: {'있음 — 완성 조립' if HAVE_AUDIO else '없음 — 무음 시안'} | "
-          f"{'1080p30' if FULL else '480p15 시안'}")
+    print(f"[v2] {EP}편 | 음성: {'있음 — 소리 합성' if HAVE_AUDIO else '없음 — 무음'} | "
+          f"{'완성 렌더' if FULL else '시안 렌더(최종본 아님)'} {VW}x{VH} {VFPS}fps")
     if AUDIO_SUB != "audio":
         print(f"[v2] 주의: 음성 스냅샷 '{AUDIO_SUB}' 타이밍 기준 시안 — 최종본 아님"
               f" (최종은 audio/ 확정 후 재렌더)")
@@ -2214,7 +2221,12 @@ def main():
         cmd = [imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-i", silent, "-i", audio,
                "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", final]
         subprocess.run(cmd, check=True, capture_output=True)
-        print(f"[v2] 완성: {final}")
+        # [P2] '완성'이라는 단어는 --full 렌더에서만 쓴다. 시안은 해상도를 문구에 박아
+        # 로그만 보고 최종본으로 오인하는 경로를 없앤다.
+        if FULL:
+            print(f"[v2] 완성({VW}x{VH} {VFPS}fps): {final}")
+        else:
+            print(f"[v2] 시안({VW}x{VH} {VFPS}fps) — 최종본 아님: {final}")
     else:
         # --out-name 지정 시 그 이름을 존중(예: episode_480p_draft.mp4), 미지정이면 기존 관례 유지
         silent_name = OUT_NAME if OUT_NAME != "episode.mp4" else "episode_silent_preview.mp4"
