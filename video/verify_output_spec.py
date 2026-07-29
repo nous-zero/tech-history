@@ -329,9 +329,14 @@ def audit_lines(out_dir):
         except OSError:
             continue
         for axis in AUDIT_AXES:
-            for m in re.finditer(r"\[audit\] (\S+?): %s (\d+)건" % axis, txt):
+            # '(등록 구역 N개)' 꼬리표를 함께 포착한다 — 보호영역 축은 등록 구역이
+            # 0개면 "침범 0건"이 공허하게 참이 되므로, 건수만 읽으면 검사가 돌았다는
+            # 사실을 검사가 무언가를 봤다는 뜻으로 오독한다(2026-07-30 2차 감사 지적).
+            for m in re.finditer(r"\[audit\] (\S+?): %s (\d+)건(?: \(등록 구역 (\d+)개\))?"
+                                 % axis, txt):
                 hits.setdefault(m.group(1), {})[axis] = {
-                    "count": int(m.group(2)), "source": os.path.basename(p)}
+                    "count": int(m.group(2)), "source": os.path.basename(p),
+                    "zones": int(m.group(3)) if m.group(3) is not None else None}
     return hits
 
 
@@ -432,8 +437,24 @@ def check_frame_audit(rows, tag, out_dir, expect_scenes=2, scope="", axes=None):
                 rows.append(Row(tag, "%s(%s)" % (axis, nm), "미확인", "0건", "WARN",
                                 "이 축의 [audit] 줄이 없음 — 옛 렌더 로그(검사기 신설 전)"))
                 continue
-            rows.append(Row(tag, "%s(%s)" % (axis, nm), "%d건" % h["count"], "0건",
-                            "PASS" if h["count"] == 0 else "FAIL", "출처: %s" % h["source"]))
+            # 보호영역 축은 '등록 구역 수'를 행 이름에 병기한다. 구역이 0개면 침범 0은
+            # 아무것도 보증하지 않으므로 PASS 로 표시하지 않고 WARN(공허한 참)으로 낮춘다.
+            label = "%s(%s)" % (axis, nm)
+            note = "출처: %s" % h["source"]
+            verdict = "PASS" if h["count"] == 0 else "FAIL"
+            if axis == "보호영역 침범":
+                z = h.get("zones")
+                label = "%s(%s, 등록 구역 %s)" % (
+                    axis, nm, ("%d개" % z) if z is not None else "수 미기록")
+                if z == 0:
+                    verdict = "WARN"
+                    note += " · 등록 구역 0개 — '침범 0건'은 공허하게 참이다(검사 대상 없음)"
+                elif z is not None:
+                    note += (" · 이 축은 **등록된 %d개 구역에 대해서만** 판정한다. "
+                             "구역 미등록 구간(3편은 아웃트로 외 전 구간)의 요소 간 "
+                             "겹침은 원리상 검출되지 않는다 — 전 구간 구역 등록은 "
+                             "4편 과업" % z)
+            rows.append(Row(tag, label, "%d건" % h["count"], "0건", verdict, note))
     if len(hits) < expect_scenes:
         rows.append(Row(tag, "레이아웃 감사 범위", "%d장면" % len(hits),
                         "%d장면" % expect_scenes, "WARN",
