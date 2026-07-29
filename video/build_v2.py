@@ -274,6 +274,29 @@ class EpisodeBase(Scene):
             return Group(img, border)
         return Group(img)
 
+    def fit_frame(self, m, margin=0.15):
+        """프레임(화면) 밖으로 삐져나간 요소를 안쪽으로 밀어 넣는다 — 본편 프레임 이탈 방어.
+
+        쉬운 말: 액자 밖으로 걸친 도형을 '액자 안으로 밀어 넣는' 안전장치.
+        쇼츠에는 이미 keep_in() 같은 장치가 있었으나 본편에는 없어서, 3편 아웃트로의
+        '좋아요' 버튼이 화면 아래로 6.7px 잘려 나갔다(2026-07-30 release-director 실측).
+        같은 부류를 사람 눈이 두 번 잡지 않도록 기계 장치로 승격한다(rule5-4).
+        """
+        half_w = config.frame_width / 2 - margin
+        half_h = config.frame_height / 2 - margin
+        dx = dy = 0.0
+        if m.get_bottom()[1] < -half_h:
+            dy = -half_h - m.get_bottom()[1]
+        elif m.get_top()[1] > half_h:
+            dy = half_h - m.get_top()[1]
+        if m.get_left()[0] < -half_w:
+            dx = -half_w - m.get_left()[0]
+        elif m.get_right()[0] > half_w:
+            dx = half_w - m.get_right()[0]
+        if dx or dy:
+            m.shift(RIGHT * dx + UP * dy)
+        return m
+
     def show_photo(self, grp, d_in=0.8):
         self.play(FadeIn(grp, scale=1.04), run_time=max(0.3, d_in))
         if self.subtitle:  # 자막이 사진에 가려지지 않게 맨 위로
@@ -2154,6 +2177,9 @@ class Episode03(EpisodeBase):
             like_box.set_stroke(BLUE, 4).set_fill(WHITE, 1)
             like_t = ktext("좋아요", 30, BLUE, bold=True).move_to(like_box)
             like_btn = VGroup(like_box, like_t).next_to(sub_btn, DOWN, buff=0.25)
+            # 두 버튼을 한 덩어리로 묶어 프레임 안으로 밀어 넣는다.
+            # (기존: 좋아요 하단 y=-4.05 < 프레임 -4.0 → 6.7px 잘림 — 2026-07-30 실측)
+            self.fit_frame(VGroup(sub_btn, like_btn))
             cc = Text("© nous-zero", font=KFONT, font_size=22, color=LGRAY)
             cc.to_corner(DL, buff=0.4)
             t1 = max(0.4, min(0.9, d * 0.35))
