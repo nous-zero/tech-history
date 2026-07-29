@@ -50,6 +50,10 @@ refs/free-media-sources.md 3절 원문: 유튜브 오디오 라이브러리는 "
 
 *(이 항목은 copyright-counsel 최종 판정 대상 — audio-producer 단독 판단으로 확정하지 않는다.)*
 
+**2026-07-29 coordinator 승인**: 이 경고는 타당한 것으로 인정되어 유튜브 오디오 라이브러리는 후보에서
+제외 확정, ACE-Step(1순위)·Pixabay(2순위) 구도 유지. 판정은 `refs/free-media-sources.md` 3절에
+교차 참조로 박제됨(4편 착수 시 재조사 불요).
+
 ---
 
 ## 2. 본편 BGM 볼륨 기준 (실측 근거)
