@@ -7,8 +7,14 @@
 사용:
   python video/build_shorts.py <편번호>           # 시안(540x960, 15fps)
   python video/build_shorts.py <편번호> --full    # 완성(1080x1920, 30fps)
+  python video/build_shorts.py <편번호> --audit   # 세이프 영역 감사(저비용, 오디오 생략)
 출력: video/output/<편>_v2/shorts_A.mp4 (반전형), shorts_B.mp4 (요약형)
+      시안은 shorts_A_540p_draft.mp4 — 완성본 이름을 덮어쓰지 않는다(감사 처방 P2).
 지원 편: 01(아파넷 LO), 02(TCP/IP Flag Day), 03(WWW 탄생)
+
+스펙 검사(자동): --full 렌더가 끝나면 video/verify_output_spec.py 가 자동 실행돼
+해상도(1080x1920)·길이(≤60s)·라우드니스·BGM 존재·프레임 이탈 로그를 실측 판정한다.
+수동 실행: python video/verify_output_spec.py <편번호> --shorts  (종료코드 2 = 미달)
 """
 import json
 import os
@@ -1356,3 +1362,18 @@ if __name__ == "__main__":
         sys.exit(0)
     for cls, name in SHORTS[EP]:
         build(cls, name)
+    # [P1 연결] 완성 렌더 직후 산출물 스펙 실측 판정(해상도·길이·라우드니스·BGM·
+    # 프레임 이탈). '렌더 완료'는 '규격 통과'가 아니다(rule4).
+    # 시안은 540x960 이라 미달이 당연하므로 --full 에서만 건다(경보 피로 방지).
+    if FULL:
+        spec = os.path.join(ROOT, "video", "verify_output_spec.py")
+        if not os.path.exists(spec):
+            print("[shorts] 경고: verify_output_spec.py 없음 — 스펙 검사 생략(미확인)")
+        else:
+            print("\n[shorts] 산출물 스펙 실측 검사 ...")
+            rc = subprocess.run([sys.executable, spec, EP, "--shorts"]).returncode
+            if rc == 0:
+                print("[shorts] 스펙 검사 통과.")
+            else:
+                print(f"[shorts] *** 스펙 검사 미달(종료코드 {rc}) — "
+                      f"위 [spec] 미달 항목을 고치기 전에는 발행 금지 ***")

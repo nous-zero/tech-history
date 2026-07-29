@@ -10,9 +10,17 @@ v1(정적 슬라이드)과 달리 장면을 도형 애니메이션으로 그린�
   - 마킹(형광펜 박스·밑줄) 연출
 
 사용:
-  python video/build_v2.py 01           # 시안(480p15, 빠름)
-  python video/build_v2.py 01 --full    # 완성(1080p30)
+  python video/build_v2.py 01           # 시안(480p15, 빠름) → episode_480p_draft.mp4
+  python video/build_v2.py 01 --full    # 완성(1080p30)      → episode.mp4
   python video/build_v2.py 01 --full --sub  # 자막을 영상에 구움(자막 기능 없는 플랫폼용)
+
+산출물 이름 규칙(2026-07-29 감사 처방 P2): **시안은 절대 episode.mp4 를 차지하지 않는다.**
+비 --full 렌더는 파일명에 '_draft' 가 강제로 붙고, 로그의 '완성'이라는 단어도 --full
+에서만 나온다. 예전에는 480p 시안이 episode.mp4 라는 이름으로 발행 직전까지 갔다.
+
+스펙 검사(자동): --full 렌더가 끝나면 video/verify_output_spec.py 가 자동 실행돼
+해상도·라우드니스·무음 비율·길이 불변식을 실측 판정하고 _spec_report.json 을 남긴다.
+수동 실행: python video/verify_output_spec.py 01 --body   (종료코드 2 = 규격 미달)
 
 자막 기본값은 '굽지 않음' — 유튜브에는 episode.srt 를 따로 올린다
 (시청자가 켜고 끄기 + 자동 번역 + 검색 노출. 화면 핵심 단어 팝은 유지).
@@ -2191,6 +2199,32 @@ def build_audio():
     return path
 
 
+def run_spec_check(scope):
+    """[P1 연결] 완성 렌더 직후 산출물 스펙을 기계 판정한다.
+
+    '렌더가 끝났다'와 '규격에 맞다'는 다른 말이다(rule4). 지금까지는 그 사이를
+    사람의 육안이 메웠고, 결함 5건이 전부 사용자 눈에 먼저 닿았다. 여기서 닫는다.
+    검사기가 없거나 터져도 렌더 산출물 자체는 이미 만들어졌으므로, 예외는 경고로
+    낮추고 렌더 결과를 무효화하지 않는다(단, 통과 선언도 하지 않는다).
+    """
+    script = os.path.join(ROOT, "video", "verify_output_spec.py")
+    if not os.path.exists(script):
+        print("[v2] 경고: verify_output_spec.py 없음 — 스펙 검사 생략(미확인 상태)")
+        return None
+    print("\n[v2] 산출물 스펙 실측 검사 ...")
+    try:
+        rc = subprocess.run([sys.executable, script, EP, scope]).returncode
+    except Exception as e:  # noqa: BLE001
+        print(f"[v2] 경고: 스펙 검사 실행 실패 — {e} (미확인 상태)")
+        return None
+    if rc == 0:
+        print("[v2] 스펙 검사 통과.")
+    else:
+        print(f"[v2] *** 스펙 검사 미달(종료코드 {rc}) — 위 [spec] 미달 항목을 "
+              f"고치기 전에는 발행 금지 ***")
+    return rc
+
+
 def main():
     print(f"[v2] {EP}편 | 음성: {'있음 — 소리 합성' if HAVE_AUDIO else '없음 — 무음'} | "
           f"{'완성 렌더' if FULL else '시안 렌더(최종본 아님)'} {VW}x{VH} {VFPS}fps")
@@ -2240,6 +2274,10 @@ def main():
     if used_ph:
         print(f"[v2] 플레이스홀더 사용 장면: {', '.join(used_ph)}")
     print(f"[v2] 자막: {srt}")
+    # 완성 렌더에서만 스펙 검사를 건다. 시안은 애초에 480p 라 미달이 당연하므로
+    # 여기서 돌리면 '늘 빨간불'이 되어 경고가 무뎌진다(경보 피로).
+    if FULL and HAVE_AUDIO:
+        run_spec_check("--body")
 
 
 if __name__ == "__main__":

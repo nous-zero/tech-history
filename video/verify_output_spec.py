@@ -110,17 +110,19 @@ BGM_REQUIRED_FROM_EP = 4
 class Row(object):
     """검사 1건. 실측값과 기준을 함께 들고 다닌다(둘 중 하나만으론 판정 못 함)."""
 
-    def __init__(self, target, item, measured, expected, verdict, note=""):
+    def __init__(self, target, item, measured, expected, verdict, note="", scope=""):
         self.target = target
         self.item = item
         self.measured = measured
         self.expected = expected
         self.verdict = verdict      # PASS / FAIL / WARN / INFO
         self.note = note
+        self.scope = scope          # body / shorts — 부분 검사 병합용
 
     def as_dict(self):
         return {"target": self.target, "item": self.item, "measured": self.measured,
-                "expected": self.expected, "verdict": self.verdict, "note": self.note}
+                "expected": self.expected, "verdict": self.verdict, "note": self.note,
+                "scope": self.scope}
 
 
 # ---------- 실측 원시 함수 (전부 ffmpeg/wave 직접 관측) ----------
@@ -515,11 +517,28 @@ def main():
         if not os.path.isdir(out_dir):
             print("[spec] 오류: 출력 폴더 없음 — %s" % out_dir)
             sys.exit(1)
+        # 범위 표식은 '추가된 구간을 통째로 도장 찍는' 방식으로 단다 — 32곳의
+        # Row 생성부에 일일이 인자를 넣으면 언젠가 한 곳을 빠뜨린다.
         if not only_shorts:
+            n0 = len(rows)
             verify_body(rows, ep, out_dir)
+            for r in rows[n0:]:
+                r.scope = "body"
         if not only_body:
+            n0 = len(rows)
             verify_shorts(rows, ep, out_dir)
+            for r in rows[n0:]:
+                r.scope = "shorts"
         report_path = os.path.join(out_dir, "_spec_report.json")
+
+    # 이번 실행이 커버한 범위를 표시 — 부분 검사(--body/--shorts)가 반대쪽 결과를
+    # 지워버리지 않게 하기 위한 표식이다. build_v2 --full 이 본편만, build_shorts
+    # --full 이 쇼츠만 검사해 각각 리포트를 쓰면, 병합 없이는 뒤엣것이 앞엣것을
+    # 덮어써 '검사한 적 없는 축'이 리포트에서 사라진다(= 결함 2 와 같은 부류).
+    scopes = set(r.scope for r in rows if r.scope)
+    for r in rows:
+        if not r.scope:
+            r.scope = "file"
 
     fails = [r for r in rows if r.verdict == "FAIL"]
     warns = [r for r in rows if r.verdict == "WARN"]
@@ -539,22 +558,40 @@ def main():
         for r in warns:
             print("  - %s / %s: 실측 %s (기준 %s)" % (r.target, r.item, r.measured, r.expected))
 
+    # 이전 실행이 검사한 '다른 범위'의 행은 살려서 합친다(같은 범위는 새 값으로 교체).
+    kept = []
+    if scopes and os.path.exists(report_path):
+        try:
+            with open(report_path, encoding="utf-8") as f:
+                prev = json.load(f)
+            kept = [d for d in prev.get("rows", []) if d.get("scope") and d["scope"] not in scopes]
+        except (OSError, ValueError):
+            kept = []
+    all_rows = kept + [r.as_dict() for r in rows]
+    a_fail = [d for d in all_rows if d["verdict"] == "FAIL"]
+    a_warn = [d for d in all_rows if d["verdict"] == "WARN"]
+
     payload = {"episode": ep, "generated_by": "video/verify_output_spec.py",
-               "verdict": "FAIL" if fails else "PASS",
+               "scopes_checked": sorted(set(d.get("scope", "") for d in all_rows)),
+               "scopes_this_run": sorted(scopes) if scopes else ["file"],
+               "verdict": "FAIL" if a_fail else "PASS",
                "exit_code": code,
-               "counts": {"total": len(rows), "fail": len(fails), "warn": len(warns),
-                          "pass": len([r for r in rows if r.verdict == "PASS"])},
+               "counts": {"total": len(all_rows), "fail": len(a_fail), "warn": len(a_warn),
+                          "pass": len([d for d in all_rows if d["verdict"] == "PASS"])},
                "standards": {"res_body": list(RES_BODY), "res_shorts": list(RES_SHORTS),
                              "fps": FPS_REQUIRED, "lufs": LUFS_TARGET, "lufs_tol": LUFS_TOL,
                              "true_peak_max": TRUE_PEAK_MAX, "sr_recommend": SR_RECOMMEND,
                              "silence_ratio_max": SILENCE_RATIO_MAX,
                              "silence_gap_max": SILENCE_GAP_MAX, "dur_tol": DUR_TOL},
-               "rows": [r.as_dict() for r in rows]}
+               "rows": all_rows}
     try:
         with open(report_path, "w", encoding="utf-8") as f:
             json.dump(payload, f, ensure_ascii=False, indent=2)
-        print("[spec] 판정: %s (미달 %d / 경고 %d) → %s"
-              % (payload["verdict"], len(fails), len(warns), report_path))
+        extra = ""
+        if kept:
+            extra = " / 이전 범위 %d행 병합" % len(kept)
+        print("[spec] 판정: %s (이번 실행 미달 %d·경고 %d%s) → %s"
+              % (payload["verdict"], len(fails), len(warns), extra, report_path))
     except OSError as e:
         print("[spec] 경고: 리포트 저장 실패 — %s" % e)
     sys.exit(code)
