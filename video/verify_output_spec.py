@@ -590,8 +590,19 @@ def check_used_assets(rows, tag, ep, out_dir, root):
                       "(3편에서 5건 발생). 판정은 counsel 소관 — 여기서는 목록만 낸다"))
 
 
-CAPTION_OPAQUE_MEAN = 140.0   # 캡션 칩(회색 #6B7280 + 흰 글씨) 칸의 완전 불투명 시 밝기
-CAPTION_BG_MEAN = 250.0       # 흰 배경(#FFFFFF)
+# ---- 캡션 실재 판별식 (2026-07-30 재설계 — 실측 근거) --------------------------
+# 구판(크롭 평균 <= 140)은 4편 1080p 에서 캡션 실재 8건을 0.0~2.5초로 오판했다.
+# 원인 실측: 캡션 실재 크롭의 평균이 137.1~145.8 로 문턱 140 을 사이에 두고 흩어져
+# 있었다 — 배경 혼입 몇 점에 판정이 뒤집히는 동전 던지기(f75s 육안 대조로 확정).
+# 신판 = 픽셀 대역 비율 2조건. 4편 최종본 재/부재 12표본 실측 분리:
+#   칩 대역(밝기 70~165, 칩 #6B7280 채움+글자 안티앨리어싱): 재 0.756~0.820 / 부재 0.000~0.107
+#   백 대역(밝기 >=200, 흰 글자·배경): 재 0.150~0.218 (글자 실재 증거)
+# 문턱은 분리 구간의 가운데(재 최저 0.756 ↔ 부재 최고 0.107 → 0.35)로 잡아 양쪽에
+# 2배 이상 여유. 페이드 중엔 칩 밝기가 대역을 벗어나므로(백배경 50% 페이드 ≈ 180,
+# 흑배경 ≈ 60) '완전 불투명' 요구가 판별식 자체에 내장된다.
+CAPTION_CHIP_BAND = (70.0, 165.0)   # 칩 채움·글자 경계 픽셀의 밝기 대역
+CAPTION_CHIP_MIN_FRAC = 0.35        # 크롭에서 칩 대역이 차지해야 하는 최소 비율
+CAPTION_TEXT_MIN_FRAC = 0.03        # 흰 글자 픽셀 최소 비율(글자 없는 회색 덩어리 배제)
 
 
 def scan_caption_frames(mp4, t0, t1, box, ffmpeg, fps=30.0, pad=0.7):
@@ -614,14 +625,19 @@ def scan_caption_frames(mp4, t0, t1, box, ffmpeg, fps=30.0, pad=0.7):
     n = len(raw) // (w * h * 3)
     if n == 0:
         return None
-    a = np.frombuffer(raw[:n * w * h * 3], dtype=np.uint8) \
-          .reshape(n, h, w, 3).mean(axis=(1, 2, 3))
+    lum = np.frombuffer(raw[:n * w * h * 3], dtype=np.uint8) \
+            .reshape(n, h, w, 3).mean(axis=3)          # 프레임별 픽셀 밝기
+    lo, hi = CAPTION_CHIP_BAND
+    chip_frac = ((lum >= lo) & (lum <= hi)).mean(axis=(1, 2))
+    text_frac = (lum >= 200).mean(axis=(1, 2))
     # 실효 프레임 간격은 '요청한 fps'가 아니라 **실제로 받은 장수 ÷ 실제 구간 길이**로
     # 구한다. -ss/-t 는 파일 끝에서 잘리고, 부하에 따라 장수가 흔들리기도 한다(실측:
     # 같은 명령이 353장/374장). 받은 장수로 나누면 그 흔들림이 시간 계산을 왜곡하지 않는다.
     span = dur if dur > 0 else (n / fps)
     step = span / n
-    idx = [i for i, v in enumerate(a) if v <= CAPTION_OPAQUE_MEAN]
+    idx = [i for i in range(n)
+           if chip_frac[i] >= CAPTION_CHIP_MIN_FRAC
+           and text_frac[i] >= CAPTION_TEXT_MIN_FRAC]
     if not idx:
         return (0.0, None, None, n)
     return (len(idx) * step, start + idx[0] * step, start + idx[-1] * step, n)
