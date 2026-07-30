@@ -1,0 +1,257 @@
+{
+ "collected_at": "2026-07-30T10:20:03",
+ "channel": "UCFDEkjffWuo6CxeOCThTjRA",
+ "range": [
+  "2026-07-16",
+  "2026-07-30"
+ ],
+ "note": "분석 데이터는 1~2일 지연 확정 — 빈 배열은 '미확정'이지 0이 아님",
+ "by_day": {
+  "headers": [
+   "day",
+   "views",
+   "estimatedMinutesWatched",
+   "averageViewDuration",
+   "averageViewPercentage",
+   "subscribersGained"
+  ],
+  "rows": [
+   [
+    "2026-07-16",
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   [
+    "2026-07-17",
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   [
+    "2026-07-18",
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   [
+    "2026-07-19",
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   [
+    "2026-07-20",
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   [
+    "2026-07-21",
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   [
+    "2026-07-22",
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   [
+    "2026-07-23",
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   [
+    "2026-07-24",
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   [
+    "2026-07-25",
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   [
+    "2026-07-26",
+    0,
+    0,
+    0,
+    0,
+    1
+   ],
+   [
+    "2026-07-27",
+    3046,
+    284,
+    20,
+    79.22,
+    1
+   ]
+  ]
+ },
+ "by_video": {
+  "headers": [
+   "video",
+   "views",
+   "estimatedMinutesWatched",
+   "averageViewDuration",
+   "averageViewPercentage",
+   "likes",
+   "comments"
+  ],
+  "rows": [
+   [
+    "_2sLf6WfwvQ",
+    1818,
+    206,
+    24,
+    109.66,
+    6,
+    0
+   ],
+   [
+    "nDBT7il7H9w",
+    1216,
+    71,
+    13,
+    47.42,
+    2,
+    0
+   ],
+   [
+    "aPR3TsM9Rls",
+    11,
+    6,
+    36,
+    24.74,
+    0,
+    0
+   ]
+  ]
+ },
+ "traffic_sources": {
+  "headers": [
+   "insightTrafficSourceType",
+   "views"
+  ],
+  "rows": [
+   [
+    "SHORTS",
+    2942
+   ],
+   [
+    "YT_OTHER_PAGE",
+    44
+   ],
+   [
+    "YT_CHANNEL",
+    32
+   ],
+   [
+    "YT_SEARCH",
+    16
+   ],
+   [
+    "RELATED_VIDEO",
+    12
+   ],
+   [
+    "NO_LINK_OTHER",
+    0
+   ]
+  ]
+ },
+ "search_terms": {
+  "headers": [
+   "insightTrafficSourceDetail",
+   "views"
+  ],
+  "rows": [
+   [
+    "잔나비 she 신부입장",
+    2
+   ],
+   [
+    "1호선 빌런",
+    1
+   ],
+   [
+    "kiss scene",
+    1
+   ],
+   [
+    "갸루",
+    1
+   ],
+   [
+    "교권국",
+    1
+   ],
+   [
+    "박교령",
+    1
+   ],
+   [
+    "스멜링솔트",
+    1
+   ],
+   [
+    "헌터퐝 연가시",
+    1
+   ]
+  ]
+ },
+ "geography": {
+  "headers": [
+   "country",
+   "views"
+  ],
+  "rows": [
+   [
+    "KR",
+    2835
+   ],
+   [
+    "US",
+    48
+   ],
+   [
+    "JP",
+    39
+   ],
+   [
+    "VN",
+    23
+   ],
+   [
+    "AU",
+    22
+   ]
+  ]
+ }
+}

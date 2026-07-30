@@ -62,6 +62,8 @@
 | copyright-counsel | 4편 소재 **선행 법무 판정** | `a541df49978cf920f` | 🔄 |
 | audio-producer #2 | 캐글 음성 생산 + STT 전수 검수 | `a6333c78931694396` | 🔄 |
 | channel-adapter | 유튜브 메타·SEO 원고(제목 확정 → 썸네일 해금) | `a0c8df4598e1cbfb1` | 🔄 |
+| marketing-analyst 하위 #1 | 브라우저 댓글 census + 채널 홈 레이아웃 실측 | `ac04fcbb5a20482f2` | 🔄 |
+| marketing-analyst 하위 #2 | force-ssl 스코프·커뮤니티 탭 요건·재생목록 SEO 리서치 | `a0db61574764c6239` | 🔄 |
 
 ## 3. 결정·실측 기록 (세션 소멸 대비 — 여기에 누적)
 
