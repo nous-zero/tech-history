@@ -35,7 +35,7 @@
 | 10 | 메타·SEO | channel-adapter | 🔄(**정정 중**) | `refs/ep04-youtube-meta.md`(사본, 커밋 1655455) + `video/output/04_v2/youtube_meta.txt` | 1차 완료(제목 77자·태그 18건·md5 일치)했으나 **1c 판정으로 제목·설명 첫 문단·쇼츠 B 제목 정정 재가동** — 새 04.json title 기준, 전수 grep + md5 재대조 지시 |
 | 11 | 법무 최종 심사 | copyright-counsel | ⏳ | `refs/legal-review-ep04.md` | |
 | 12 | 스펙 실측 | 총감독 | ⏳ | `video/verify_output_spec.py 04` | |
-| 13 | 발행 전 감사 | auditor | ⏳ | `refs/audit-reports/` | |
+| 13 | 발행 전 감사 | auditor | 🔄 | `refs/audit-reports/` + 마커 `refs/_DONE_audit_ep04.txt` | **2단계 설계로 착수(쇼츠와 병렬)**: 1단계=본편·메타·법무·적립 9건 처리 / 2단계=쇼츠 마커 후 통합 결론. 검사기 불신 조항 포함(적발 3호 — "검사기 PASS"도 표본 재실측) |
 | 14 | 승인 행 기록 | 총감독 | ⏳ | `refs/publish-reviews.md` | |
 | 15 | 업로드·§8 공개 | 총감독 | ⏳ | `refs/youtube-publish-log.md` | |
 | 16 | 고정댓글·역링크(선행⑥) | 총감독 | ⏳ | | |
@@ -70,6 +70,7 @@
 | planner-writer(재가동) | 사실 재검증: 나스닥 2시간 쟁점 | `ae78b58dcaf053a63` | 🔄 |
 | asset-scout | BGM Wayback 스냅샷(시급) + 소재 조달 | `af5bd9def977d2dd6` | 🔄 |
 | visual-designer | 썸네일 주안+alt | `a82e140a278b5d2ae` | ✅ 완료 |
+| auditor | **발행 전 독립 감사(2단계 설계 — 본편 먼저·쇼츠 마커 후 통합)** | `a18170f38be29f74e` | 🔄 |
 | marketing-analyst 하위 #1 | 브라우저 댓글 census + 채널 홈 레이아웃 실측 | `ac04fcbb5a20482f2` | 🔄 |
 | marketing-analyst 하위 #2 | force-ssl 스코프·커뮤니티 탭 요건·재생목록 SEO 리서치 | `a0db61574764c6239` | 🔄 |
 
