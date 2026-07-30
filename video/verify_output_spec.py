@@ -516,6 +516,195 @@ def check_frame_audit(rows, tag, out_dir, expect_scenes=2, scope="", axes=None):
                         "일부 장면의 감사 기록이 없다 — 부분 확인"))
 
 
+# ---------- 실사용 소재 대장 · 재현 표기 프레임 검산 (2026-07-30 counsel §15) ----
+
+def load_manifest(out_dir):
+    p = os.path.join(out_dir, "_render_manifest.json")
+    if not os.path.exists(p):
+        return None, p
+    try:
+        with open(p, encoding="utf-8") as f:
+            return json.load(f), p
+    except (OSError, ValueError) as e:
+        print("[spec] 경고: 렌더 대장 판독 실패 — %s" % e)
+        return None, p
+
+
+def check_used_assets(rows, tag, ep, out_dir, root):
+    """렌더가 **실제로 연 파일**과 대장·크레딧을 대조한다.
+
+    3편 결함: 실제로는 안 쓴 소재 5건이 크레딧에 남아 발행 직전 사람 눈에 걸렸다.
+    반대 방향(썼는데 크레딧에 없음)은 저작권 사고다. 두 방향 모두 '사실 데이터'가
+    없으면 대조 자체가 불가능해서, build_v2 가 파일을 여는 지점에서 자동 기록한다.
+    """
+    man, path = load_manifest(out_dir)
+    if man is None:
+        rows.append(Row(tag, "실사용 소재 대장", "없음", "_render_manifest.json", "WARN",
+                        "이 검사기 신설(2026-07-30) 전 렌더 — 재렌더하면 생긴다. "
+                        "지금은 크레딧 양방향 대조의 근거 데이터가 없다(미확인)"))
+        return
+    used = man.get("assets") or {}
+    partial = man.get("partial_render")
+    rows.append(Row(tag, "실사용 소재 대장", "%d건" % len(used), "렌더 자동 기록", "INFO",
+                    "%s%s" % (os.path.basename(path),
+                              " · 부분 렌더 기록이라 전량이 아님" if partial else "")))
+    if partial:
+        rows.append(Row(tag, "소재 대조 가능 여부", "부분 렌더", "전량 렌더", "WARN",
+                        "--from-anim/--upto-anim 렌더의 대장은 그 구간만 담는다 — "
+                        "크레딧 대조에 쓰지 말 것"))
+        return
+
+    # ① 자산 대장(refs/asset-ledger.md) 미등록 소재 = 지시서상 '유입 0' 위반
+    ledger_p = os.path.join(root, "refs", "asset-ledger.md")
+    try:
+        with open(ledger_p, encoding="utf-8") as f:
+            ledger = f.read()
+    except OSError:
+        ledger = None
+    if ledger is None:
+        rows.append(Row(tag, "대장 등록 대조", "대조 불가", "refs/asset-ledger.md", "WARN",
+                        "자산 대장 파일을 못 읽었다"))
+    else:
+        # 파일명 또는 md5 중 하나라도 대장에 있으면 등록된 것으로 본다.
+        missing = [n for n in sorted(used)
+                   if n not in ledger and (used[n].get("md5") or "\x00") not in ledger]
+        rows.append(Row(tag, "대장 미등록 소재", "%d건" % len(missing), "0건",
+                        "PASS" if not missing else "FAIL",
+                        "대조 기준: 파일명 또는 md5 가 refs/asset-ledger.md 에 있는가"
+                        + ("" if not missing else
+                           " · 미등록: " + ", ".join(missing)
+                           + " · **별칭(같은 파일 다른 이름)일 수 있다** — 3편에서 "
+                             "ep03_cern_intro.jpg = ep03_cern_aerial.jpg 처럼 md5 는 같은데 "
+                             "이름만 다른 사례가 실측됐다. 대장에 별칭·md5 를 병기하면 해소된다 "
+                             "(asset-scout 관할)")))
+
+    # ② 크레딧에는 있는데 안 쓴 소재 후보 — assets/ 의 이 편 파일 중 미사용분
+    adir = os.path.join(root, "video", "output", "assets")
+    on_disk = []
+    if os.path.isdir(adir):
+        on_disk = [f for f in os.listdir(adir) if f.startswith("ep%s_" % ep)]
+    unused = sorted(set(on_disk) - set(used))
+    rows.append(Row(tag, "조달했으나 미사용 소재", "%d건" % len(unused), "참고", "INFO",
+                    ("없음" if not unused else ", ".join(unused))
+                    + " · 크레딧 블록에 이 파일들의 출처가 남아 있으면 행을 지울 것"
+                      "(3편에서 5건 발생). 판정은 counsel 소관 — 여기서는 목록만 낸다"))
+
+
+CAPTION_OPAQUE_MEAN = 140.0   # 캡션 칩(회색 #6B7280 + 흰 글씨) 칸의 완전 불투명 시 밝기
+CAPTION_BG_MEAN = 250.0       # 흰 배경(#FFFFFF)
+
+
+def scan_caption_frames(mp4, t0, t1, box, ffmpeg, fps=30.0, pad=0.7):
+    """캡션 칸을 **프레임 단위로 전수 계수**한다 — counsel 이 지정한 검증 방법.
+
+    쉬운 말: 그 자리에 캡션이 찍힌 사진(프레임)이 몇 장인지 직접 센다.
+    '완전 불투명' 기준이므로 페이드 중인 프레임은 빼고, 다 떠 있는 프레임만 센다.
+    창 앞뒤로 pad 초를 더 훑어 경계를 놓치지 않는다.
+    반환: (완전불투명 초, 시작 시각, 끝 시각, 훑은 프레임 수)
+    """
+    import numpy as np
+    x0, y0, x1, y1 = box
+    w, h = max(2, (x1 - x0) // 2 * 2), max(2, (y1 - y0) // 2 * 2)
+    start, dur = max(0.0, t0 - pad), (t1 - t0) + 2 * pad
+    cmd = [ffmpeg, "-hide_banner", "-loglevel", "error", "-ss", "%.3f" % start,
+           "-t", "%.3f" % dur, "-i", mp4,
+           "-vf", "crop=%d:%d:%d:%d" % (w, h, x0 // 2 * 2, y0 // 2 * 2),
+           "-r", "%.4f" % fps, "-f", "rawvideo", "-pix_fmt", "rgb24", "-"]
+    raw = subprocess.run(cmd, capture_output=True).stdout
+    n = len(raw) // (w * h * 3)
+    if n == 0:
+        return None
+    a = np.frombuffer(raw[:n * w * h * 3], dtype=np.uint8) \
+          .reshape(n, h, w, 3).mean(axis=(1, 2, 3))
+    # 실효 프레임 간격은 '요청한 fps'가 아니라 **실제로 받은 장수 ÷ 실제 구간 길이**로
+    # 구한다. -ss/-t 는 파일 끝에서 잘리고, 부하에 따라 장수가 흔들리기도 한다(실측:
+    # 같은 명령이 353장/374장). 받은 장수로 나누면 그 흔들림이 시간 계산을 왜곡하지 않는다.
+    span = dur if dur > 0 else (n / fps)
+    step = span / n
+    idx = [i for i, v in enumerate(a) if v <= CAPTION_OPAQUE_MEAN]
+    if not idx:
+        return (0.0, None, None, n)
+    return (len(idx) * step, start + idx[0] * step, start + idx[-1] * step, n)
+
+
+def _rgb_at(mp4, t, box, ffmpeg):
+    """mp4 의 t초 프레임에서 box(px, 좌·상·우·하) 안 픽셀 배열을 돌려준다."""
+    import numpy as np
+    x0, y0, x1, y1 = box
+    # 크기를 짝수로 내린다 — yuv420p(색을 가로세로 절반 해상도로 저장하는 포맷)에서는
+    # 홀수 폭 crop 이 조용히 1픽셀 줄어 나오고, 그러면 버퍼 길이가 안 맞아 이 함수가
+    # 늘 None 을 돌려준다(= 검사가 항상 '표본 0'으로 통과·실패를 못 가림).
+    w, h = max(2, (x1 - x0) // 2 * 2), max(2, (y1 - y0) // 2 * 2)
+    x0, y0 = x0 // 2 * 2, y0 // 2 * 2
+    cmd = [ffmpeg, "-hide_banner", "-loglevel", "error", "-ss", "%.3f" % t,
+           "-i", mp4, "-frames:v", "1",
+           "-vf", "crop=%d:%d:%d:%d" % (w, h, x0, y0),
+           "-f", "rawvideo", "-pix_fmt", "rgb24", "-"]
+    out = subprocess.run(cmd, capture_output=True).stdout
+    if len(out) < w * h * 3:
+        return None
+    return np.frombuffer(out[:w * h * 3], dtype=np.uint8).reshape(h, w, 3)
+
+
+def check_legal_caption_frames(rows, tag, out_dir, mp4):
+    """재현 표기가 **최종 mp4 프레임에 실제로 찍혀 있는지**를 픽셀로 검산한다.
+
+    왜 대본·로그만으로 부족한가: 로그의 지속 시간은 조립기가 스스로 낸 숫자다.
+    전송에 쓴 파일을 기대값으로 다시 읽는 것과 같은 자기충족 검증이 되지 않도록
+    (GOVERNANCE §5), **완성 mp4 에서 프레임을 뽑아** 캡션 칸이 배경색이 아님을 본다.
+    counsel §8-2 조건① "전 재현 컷에 표기 실재 — 최종 렌더 프레임 계수로 검증"의 이행.
+    """
+    man, _ = load_manifest(out_dir)
+    if man is None or man.get("partial_render"):
+        return
+    caps = man.get("legal_captions") or []
+    if not caps:
+        rows.append(Row(tag, "재현 표기 프레임 검산", "표기 0건", "counsel 심사서와 대조",
+                        "WARN", "이 편에 법무 표기가 정말 없는지 확인할 것"))
+        return
+    if not man.get("full"):
+        rows.append(Row(tag, "재현 표기 프레임 검산", "시안 대장", "완성 렌더 대장", "WARN",
+                        "_render_manifest.json 이 --full 이 아닌 렌더에서 나왔다 — "
+                        "완성본 프레임과 짝이 맞는다고 볼 수 없다(재렌더 후 재검사)"))
+        return
+    ffmpeg = FF
+    import numpy as np
+    p = probe(mp4)
+    vw, vh = p["width"], p["height"]
+    if not vw:
+        rows.append(Row(tag, "재현 표기 프레임 검산", "해상도 판독 실패", "판독", "WARN", ""))
+        return
+    for c in caps:
+        name = "재현 표기 「%s」" % c["text"][:18]
+        fr, t0, t1 = c.get("box_frac"), c.get("first_sec"), c.get("last_sec")
+        if not fr or t0 is None:
+            rows.append(Row(tag, name, "좌표 미기록", "기록됨", "WARN",
+                            "옛 렌더 대장 — 재렌더 필요"))
+            continue
+        # 비율 → 이 mp4 의 픽셀. 가장자리 2%는 잘라 낸다(테두리 안티앨리어싱 회피).
+        bw, bh = (fr[2] - fr[0]) * vw, (fr[3] - fr[1]) * vh
+        box = [int(fr[0] * vw + bw * 0.2), int(fr[1] * vh + bh * 0.2),
+               int(fr[2] * vw - bw * 0.2), int(fr[3] * vh - bh * 0.2)]
+        need = c["need_sec"]
+        res = scan_caption_frames(mp4, t0, t1, box, ffmpeg, fps=p["fps"] or 30.0)
+        if res is None:
+            rows.append(Row(tag, name, "프레임 추출 실패", "≥%.2f초" % need, "WARN",
+                            "ffmpeg 가 그 구간에서 프레임을 못 냈다"))
+            continue
+        opaque, f0, f1, nfr = res
+        ok = opaque + 1e-6 >= need
+        note = ("프레임 %d장 전수 계수 · 완전 불투명 %.3f초(%s) · 조립기 추정 %.2f초"
+                % (nfr, opaque,
+                   "구간 %.2f~%.2f" % (f0, f1) if f0 is not None else "구간 없음",
+                   c["shown_sec"]))
+        if c.get("legacy"):
+            note += " · 20자 초과 레거시 예외분"
+        note += (" · 판정 기준 = counsel 이 지정한 최종 렌더 프레임 계수(조립기가 스스로 낸"
+                 " 숫자가 아니다 — GOVERNANCE §5 자기충족 검증 금지)")
+        rows.append(Row(tag, name, "%.3f초 (프레임 계수)" % opaque,
+                        "≥%.2f초" % need, "PASS" if ok else "FAIL", note))
+
+
 # ---------- 편 단위 검사 ----------
 
 def verify_body(rows, ep, out_dir):
@@ -533,6 +722,10 @@ def verify_body(rows, ep, out_dir):
     # 불변식 부재"(유형 A 누적 5회) + 요소 간 겹침(3편 아웃트로) 두 축을 함께 판정한다.
     # 장면 클래스 이름이 EpisodeNN 이므로 접두어로 쇼츠(ShortNN*) 기록과 가른다.
     check_frame_audit(rows, tag, out_dir, expect_scenes=1, scope="Episode")
+    # counsel §15 / 총감독 회부(2026-07-30): 크레딧 양방향 대조의 근거 데이터와
+    # 재현 표기의 프레임 실재 검산. 둘 다 렌더가 남긴 _render_manifest.json 을 읽는다.
+    check_used_assets(rows, tag, ep, out_dir, ROOT)
+    check_legal_caption_frames(rows, tag, out_dir, mp4)
 
     # 오디오 규격은 mp4 컨테이너 실측값으로 본다(시청자가 받는 것이 이것이므로).
     check_audio_format(rows, tag, p["sample_rate"], p["channels"], "mp4 컨테이너 실측")

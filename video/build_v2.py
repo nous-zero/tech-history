@@ -317,6 +317,35 @@ class LegalCaptionError(RuntimeError):
 
 LEGAL_CAPTIONS = []   # 이번 렌더에서 만들어진 법무 표기 대장(지속 시간 실측 대상)
 
+# ---------- 실사용 소재 대장 (2026-07-30 counsel §15 / 총감독 회부) ----------
+#
+# 왜: 3편에서 **실제로는 안 쓴 소재 5건이 크레딧에 남아** 발행 직전에 사람 눈으로
+# 걸러졌다. 반대 방향(썼는데 크레딧에 없음)은 저작권 사고다. 두 방향을 기계로 대조하려면
+# 먼저 "이 렌더가 정말 연 파일이 무엇인가"라는 사실 데이터가 있어야 한다.
+# 수기 목록은 그 자체가 오류 주입 경로이므로, **파일을 여는 지점을 후킹**해 자동 기록한다.
+ASSET_USES = {}       # {파일명: {"md5":…, "bytes":…, "segs":[…], "count":n}}
+_MD5_CACHE = {}
+
+
+def record_asset_use(path, seg):
+    """소재 파일이 실제로 열릴 때마다 대장에 적는다(md5 는 파일당 1회만 계산)."""
+    import hashlib
+    name = os.path.basename(path)
+    if name not in ASSET_USES:
+        if path not in _MD5_CACHE:
+            h = hashlib.md5()
+            with open(path, "rb") as f:
+                for blk in iter(lambda: f.read(1 << 20), b""):
+                    h.update(blk)
+            _MD5_CACHE[path] = h.hexdigest()
+        ASSET_USES[name] = {"md5": _MD5_CACHE[path],
+                            "bytes": os.path.getsize(path), "segs": [], "count": 0}
+    rec = ASSET_USES[name]
+    rec["count"] += 1
+    if seg not in rec["segs"]:
+        rec["segs"].append(seg)
+    return name
+
 
 def legal_min_seconds(text):
     """요구 표기 지속 = max(counsel §9-4 공식, 4편 단일 규칙 3.5초).
@@ -343,7 +372,7 @@ def legal_chip(s, color=GRAY, fs=20, kind="재현 표기"):
             f"build_v2.LEGAL_CAPTION_LEGACY 에 사유와 함께 등록할 것.")
     g = chip(s, color, fs)
     g.legal_note = {"text": s, "chars": len(s), "need": legal_min_seconds(s),
-                    "kind": kind, "first": None, "last": None,
+                    "kind": kind, "first": None, "last": None, "box": None,
                     "legacy": (EP, s) in LEGAL_CAPTION_LEGACY}
     LEGAL_CAPTIONS.append(g)
     return g
@@ -390,6 +419,7 @@ class EpisodeBase(Scene):
                 self.wait(GAP)
         self.wait(1.2)
         self.report_layout()
+        self.write_render_manifest()
 
     # --- 레이아웃 불변식: 프레임 이탈 + 보호 영역 침범 (2026-07-30 신설) ----------
     #
@@ -628,12 +658,16 @@ class EpisodeBase(Scene):
     _t_before = 0.0     # 직전 play/wait 가 시작된 장면 시각
 
     def _track_legal(self, live):
-        """법무 표기 캡션이 화면에 떠 있던 구간을 기록한다.
+        """법무 표기 캡션이 **완전 불투명하게** 떠 있던 구간을 기록한다.
 
-        감사 시점은 애니메이션이 '끝난 뒤'뿐이므로, 처음 보인 캡션의 시작 시각은
-        그 애니메이션이 **시작된** 시각(_t_before)으로 잡는다 — 등장 애니메이션(FadeIn)
-        동안에도 캡션은 화면에 그려져 있기 때문이다. 끝 시각은 마지막으로 보인 감사 시점.
-        (퇴장 애니메이션 동안 남아 있던 시간은 세지 않는다 = 항상 과소 계상 = 안전한 쪽.)
+        counsel §9-4 의 자는 "완전 불투명 연속 표시"다. 등장 애니메이션(FadeIn)
+        구간은 투명도가 0→100% 로 올라가는 중이므로 세지 않는다 — 감사 시점이
+        애니메이션 '종료 직후'이므로, 처음 보인 감사 시각을 그대로 시작으로 잡으면
+        자연히 페이드가 빠진다. 끝 시각도 마지막으로 보인 감사 시점(퇴장 페이드 제외).
+        양쪽 다 **과소 계상 = 안전한 쪽**이다.
+        (2026-07-30 실측으로 교정: 페이드 시작 시각을 쓰면 3편 seg10 이 6.07초로
+        나오는데, 그 순간 프레임을 뽑아 보면 캡션 칸이 아직 흰 배경이었다(RGB 255).
+        조립기가 스스로 낸 숫자를 픽셀이 반증한 사례 — 숫자를 픽셀에 맞췄다.)
         """
         if not LEGAL_CAPTIONS:
             return
@@ -642,19 +676,33 @@ class EpisodeBase(Scene):
             if id(g) in live:
                 n = g.legal_note
                 if n["first"] is None:
-                    n["first"] = self._t_before
+                    n["first"] = t
                 n["last"] = t
+                # 표기가 떠 있던 **모든 순간에 공통으로 덮고 있던 칸**(교집합)을 남긴다.
+                # 켄 번즈로 캡션이 밀려도 이 칸은 창 내내 캡션이 차지한 자리이므로,
+                # 렌더 후 프레임을 뽑아 "정말 떠 있었나"를 픽셀로 검산할 수 있다
+                # (counsel §8-2 조건① 프레임 계수 검증의 좌표 근거).
+                b = self.bbox(g)
+                n["box"] = b if n.get("box") is None else (
+                    max(n["box"][0], b[0]), min(n["box"][1], b[1]),
+                    max(n["box"][2], b[2]), min(n["box"][3], b[3]))
+
+    # 조립기 추정의 계통 오차 여유(초). 감사 시점이 애니메이션 경계뿐이라 앞뒤로
+    # 최대 한 단계씩 놓친다 — 3편 seg10 실측: 추정 5.46초 vs **프레임 전수 계수 5.600초**
+    # (0.14초 과소). 이 여유 없이 차단하면 멀쩡한 렌더가 0.04초 차로 막힌다.
+    # 확정 판정은 언제나 verify_output_spec 의 프레임 계수이고, 여기 값은 사전 경보다.
+    LEGAL_EST_SLACK = 0.25
 
     def legal_shortfalls(self):
         """표기 지속이 counsel 요구치에 못 미친 캡션 목록. (문구, 실측, 요구) 튜플."""
         out = []
         for g in LEGAL_CAPTIONS:
             n = g.legal_note
-            if n["first"] is None:
+            if n["first"] is None or n["last"] is None:
                 out.append((n["text"], 0.0, n["need"], "화면에 한 번도 안 뜸"))
                 continue
             shown = n["last"] - n["first"]
-            if shown + 1e-6 < n["need"]:
+            if shown + self.LEGAL_EST_SLACK < n["need"]:
                 out.append((n["text"], shown, n["need"], "지속 미달"))
         return out
 
@@ -734,6 +782,47 @@ class EpisodeBase(Scene):
                     k = f"{self._describe(m)} ↔ {nm}"
                     self._crowding[k] = max(self._crowding.get(k, 0.0), min(soft))
 
+    def write_render_manifest(self):
+        """이 렌더의 '사실 데이터'를 파일로 남긴다 — 사람의 기억·수기 목록을 대체한다.
+
+        ①실사용 소재(파일명·md5·바이트·등장 구간) — 크레딧과 양방향 대조의 근거
+        ②법무 표기(문구·요구/실측 지속·화면 좌표) — 렌더 후 프레임 계수 검산의 좌표
+        읽는 쪽: verify_output_spec.py. 없으면 검사기가 '미확인'으로 낮춘다.
+        """
+        caps = []
+        for g in LEGAL_CAPTIONS:
+            n = g.legal_note
+            box = n.get("box")
+            frac = None
+            if box:
+                # 픽셀이 아니라 **화면 비율(0~1)** 로 남긴다. 시안(854x480)에서 잰
+                # 좌표를 완성본(1920x1080)에 그대로 쓰면 엉뚱한 칸을 검사하게 된다 —
+                # 비율로 두면 검사기가 그 mp4 의 실제 해상도에 맞춰 환산한다.
+                fw, fh = config.frame_width, config.frame_height
+                frac = [round((box[0] + fw / 2) / fw, 5),   # left
+                        round((fh / 2 - box[3]) / fh, 5),   # top
+                        round((box[1] + fw / 2) / fw, 5),   # right
+                        round((fh / 2 - box[2]) / fh, 5)]   # bottom
+            caps.append({"text": n["text"], "chars": n["chars"],
+                         "need_sec": round(n["need"], 3),
+                         "first_sec": None if n["first"] is None else round(n["first"], 3),
+                         "last_sec": None if n["last"] is None else round(n["last"], 3),
+                         "shown_sec": 0.0 if (n["first"] is None or n["last"] is None)
+                         else round(n["last"] - n["first"], 3),
+                         "legacy": n["legacy"], "box_frac": frac})
+        data = {"ep": EP, "scene": type(self).__name__,
+                "render": f"{config.pixel_width}x{config.pixel_height}"
+                          f"@{config.frame_rate}fps",
+                "full": FULL, "layout_audit_only": LAYOUT_AUDIT,
+                "partial_render": not (FROM_ANIM is None and UPTO_ANIM is None),
+                "assets": ASSET_USES, "legal_captions": caps}
+        path = os.path.join(OUT, "_render_manifest.json")
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=1)
+        print(f"[v2] 실사용 소재 {len(ASSET_USES)}건 · 법무 표기 {len(caps)}건 "
+              f"→ {os.path.basename(path)}")
+        return path
+
     def zone_coverage(self):
         """(구역이 하나라도 살아 있던 구간 수, 전체 구간 수).
 
@@ -789,11 +878,15 @@ class EpisodeBase(Scene):
               f"(표기 {len(LEGAL_CAPTIONS)}건, 상한 {LEGAL_CAPTION_MAX}자)")
         for g in LEGAL_CAPTIONS:
             n = g.legal_note
-            shown = 0.0 if n["first"] is None else n["last"] - n["first"]
+            shown = 0.0 if (n["first"] is None or n["last"] is None) else n["last"] - n["first"]
             flag = "레거시 예외" if n["legacy"] else "규격"
+            mark = ("미달" if shown + self.LEGAL_EST_SLACK < n["need"]
+                    else ("여유 적음" if shown + 1e-6 < n["need"] else "OK"))
             print(f"    - 표기 「{n['text']}」 {n['chars']}자 [{flag}]: "
-                  f"실측 {shown:.2f}초 / 요구 {n['need']:.2f}초 "
-                  f"({'미달' if shown + 1e-6 < n['need'] else 'OK'})")
+                  f"추정 하한 {shown:.2f}초 / 요구 {n['need']:.2f}초 ({mark})")
+        print(f"    ※ 위 '추정 하한'은 애니메이션 경계에서만 재는 값이라 실제보다 "
+              f"최대 {self.LEGAL_EST_SLACK}초 짧게 나온다. **확정 판정은 완성본 프레임 "
+              f"전수 계수**(verify_output_spec.py '재현 표기' 행).")
 
     def play(self, *a, **kw):
         self._t_before = self._scene_time()
@@ -909,7 +1002,9 @@ class EpisodeBase(Scene):
         만들어지는 즉시 '테두리를 물면 안 되는 구역'으로 자동 등록된다(과업 ③).
         구역은 사진을 따라다니므로 켄 번즈로 커지고 밀려도 금줄이 같이 움직인다.
         """
-        img = ImageMobject(os.path.join(ASSETS, fname))
+        path = os.path.join(ASSETS, fname)
+        record_asset_use(path, self._cur_seg)   # 실사용 소재 대장(크레딧 양방향 대조용)
+        img = ImageMobject(path)
         img.height = height
         img.move_to(pos)
         grp = Group(img, self._photo_border(img)) if framed else Group(img)
@@ -1405,7 +1500,10 @@ class Episode01(EpisodeBase):
 
         def a1(d):
             # 실사: 2022 통가 폭발 — NOAA 위성 실영상(프레임 넘기기)
-            frames = [ImageMobject(os.path.join(ASSETS, f"tonga_f{i}.png")) for i in range(9)]
+            _paths = [os.path.join(ASSETS, f"tonga_f{i}.png") for i in range(9)]
+            for _p in _paths:                       # 실사용 소재 대장 기록(photo() 밖 경로)
+                record_asset_use(_p, self._cur_seg)
+            frames = [ImageMobject(p) for p in _paths]
             for f in frames:
                 f.height = 3.5
                 f.move_to(RIGHT * 4.15 + UP * 0.45)
