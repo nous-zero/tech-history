@@ -19,13 +19,15 @@
 
 | # | 공정 | 담당 | 상태 | 산출물 경로 | 근거 |
 |---|---|---|---|---|---|
-| 1 | 영상 대본 04.json | planner-writer | ⏳ | `video/scripts/04.json` | |
-| 2 | 소재 조달·대장 등록 | asset-scout | ⏳ | `video/output/assets/ep04_*` + `refs/asset-ledger.md` | |
-| 3 | BGM 조달(선행①) | audio-producer | ⏳ | `video/output/assets/bgm/` | |
-| 4 | 법무 1차(소재·BGM) | copyright-counsel | ⏳ | `refs/legal-review-ep04.md` | |
-| 5 | 캐글 음성 생산 | audio-producer | ⏳ | `video/output/04_v2/audio/` | |
-| 6 | STT 전수 검수 | audio-producer | ⏳ | `refs/audio-qc-ep04.md` | |
-| 7 | 본편 1080p 렌더 | video-producer | ⏳ | `video/output/04_v2/episode.mp4` | |
+| 1 | 영상 대본 04.json | planner-writer | ✅ | `video/scripts/04.json` | 15세그먼트·예상 낭독 195.4초(03편 wav 실측 환산). 커밋 87a25f8·93ab331. 마커 `video/scripts/_DONE_ep04_script.txt` |
+| 1b | 소재 요구서 | planner-writer | ✅ | `refs/ep04-asset-brief.md` | 커밋 44526f8 |
+| 2 | 소재 조달·대장 등록 | asset-scout | 🚫 | `video/output/assets/ep04_*` + `refs/asset-ledger.md` | **법무 선행 판정(#4) 대기 — 착수 금지**. seg5 모자이크 화면·seg4 아이엠지 메일 원문은 판정 전 다운로드 금지 |
+| 3 | BGM 조달(선행①) | audio-producer | 🔄 | `video/output/assets/bgm/` | `pixabay-568180-corporate-explainer-video.mp3` 조달됨. 대장 등록·믹싱 반영·볼륨 실측 남음 |
+| 4 | 법무 **선행** 판정(소재·BGM) | copyright-counsel | 🔄 | `refs/legal-review-ep04.md` | **임계 게이트** — #2를 막고 있음 |
+| 5 | 캐글 음성 생산 | audio-producer(별도 세션) | 🔄 | `video/output/04_v2/audio/seg000~014.wav` | **임계 경로** |
+| 6 | STT 전수 검수 | audio-producer(별도 세션) | 🔄 | `refs/audio-qc-ep04.md` | 고유명사·숫자 단어별 검수 행 의무 |
+| 6b | **Episode04 클래스 신작(약 800행)** | video-producer | ⏳ | `video/build_v2.py` + 등록부 2668행 | 음성 확보 후 착수(타이밍이 wav 길이 파생) |
+| 7 | 본편 1080p 렌더 | video-producer | ⏳ | `video/output/04_v2/episode.mp4` | 약 70분 |
 | 8 | 쇼츠 2종 | video-producer | ⏳ | `video/output/04_v2/shorts_A.mp4`·`shorts_B.mp4` | |
 | 9 | 썸네일 | visual-designer | ⏳ | `video/output/04_v2/thumb*` | |
 | 10 | 메타·SEO | channel-adapter | ⏳ | `video/output/04_v2/youtube_meta.txt` | |
@@ -47,6 +49,19 @@
 | ⑤ | 시리즈 재생목록 "기술의 역사" 생성 + 1~3편 편성 | 총감독 | ⏳ **사용자 게이트 판단 보류** — 채널 구조 변경 소지, 발행 후 본선 경유 확인 |
 | ⑥ | 1·2·3편 설명란에 4편 역링크 | 총감독 | ⏳ (4편 URL 확정 후) |
 
+## 2-2. 가동 중인 에이전트 세션 ID (GOVERNANCE §9-3 — 이름으로는 재연결 불가)
+
+> §9-3: 총감독·팀장을 이어 쓸 때는 **새로 스폰하지 말고 스폰 시 받은 에이전트 ID로 SendMessage**한다.
+> ID를 잃으면 새 세대를 스폰해야 하고, 그때마다 인수 비용이 든다. 그래서 여기에 적어 둔다.
+
+| 역할 | 과업 | 에이전트 ID | 상태 |
+|---|---|---|---|
+| planner-writer | 대본 04.json + 소재 요구서 | `ae78b58dcaf053a63` | ✅ 완료 |
+| audio-producer #1 | 선행① BGM 도입 | `a59f54dc7ceb4968c` | 🔄 |
+| video-producer | 선행②③④ 조립기 안전장치 | `a6b228c9dc4be20fe` | 🔄 |
+| copyright-counsel | 4편 소재 **선행 법무 판정** | `a541df49978cf920f` | 🔄 |
+| audio-producer #2 | 캐글 음성 생산 + STT 전수 검수 | `a6333c78931694396` | 🔄 |
+
 ## 3. 결정·실측 기록 (세션 소멸 대비 — 여기에 누적)
 
 - (2026-07-30 6대) 착수. 위 표가 유일한 진행 원천.
@@ -56,6 +71,8 @@
 - (2026-07-30 6대 실측) **애니메이션 타이밍은 음성 wav 길이에서 나온다**(`build_v2.py:133 load_timed_segments` → `video/output/04_v2/audio/segNNN.wav`를 읽어 `TIMED` 구성). 그래서 **음성이 없으면 Episode04를 실렌더로 검증할 수 없다** → 임계 경로는 `대본 → 캐글 음성 → Episode04 작성 → 렌더`. 소재 조달·썸네일·메타는 이 경로와 병렬 가능.
 - (2026-07-30 6대 실측 — 선행⑤ 근거 재검증) **채널 재생목록: 커스텀 0개(단, 총계 2 미해명)**. `playlists.list`를 `mine:true`와 `channelId` 두 경로로 각각 조회한 결과 **둘 다 `items: []`이면서 `pageInfo.totalResults: 2`**. 즉 "3편까지 재생목록 0개"라는 감사 지적은 **표시 가능한 커스텀 재생목록 기준으로는 유지**되지만, 총계 2의 정체는 **미확인**(시스템/자동생성 재생목록 추정 — 확인 필요, 추정으로 처리 금지). 조회 도구: `C:\Users\745ra\.claude\skills\youtube-uploader\scripts\list-playlists.js`(신설, 읽기 전용)
 - (2026-07-30 6대 실측) 채널 `UCFDEkjffWuo6CxeOCThTjRA` nous-zero — 구독 4 · 조회 3,220 · **`statistics.videoCount`는 8인데 업로드 재생목록 실계수는 9**(1~3편 본편 3 + 쇼츠 6, 전부 public). 통계 지연/집계 제외 추정이나 **원인 미확인**. 도구: `list-uploads.js`(신설, 읽기 전용)
+- (2026-07-30 6대) **GOVERNANCE §9(컨텍스트 예산) 첫 적용 대상**. 총감독은 이 시점부터 **실행자가 아니라 지휘자**다 — 브라우저 조종·긴 로그 판독·대용량 통독을 직접 하지 않고 하위 에이전트에 위임해 요약만 받는다. 본선 실측: 역대 총감독 전사는 크래시 0건, 전부 컨텍스트 상한까지 태운 뒤의 정상 종료였고 그 누적의 73%가 브라우저 도구 결과였다. **주의: `PreToolUse` 유입 게이트는 설정 재적재 전까지 미발동** — 기계가 막아주지 않으므로 규율로 지킨다(`read_page`는 `max_chars`≤12000 + `filter=interactive`/`ref_id` 명시, 큰 파일은 Grep·offset/limit).
+- (2026-07-30 6대) **4편은 1~3편과 저작권 지형이 다르다**(planner-writer 경고). Mosaic UI·Netscape 로고·IE 화면·모질라 마스코트·나스닥 로고가 전부 살아있는 민간 저작물·상표(위험 🔴). 1~3편은 정부·공공연구기관 사료라 퍼블릭도메인이 많았다. 처방: **주가·점유율 재현 차트를 주력 화면으로**(seg11이 시각적 클라이맥스, 저작권 0). **소재 조달은 법무 선행 판정 뒤로 차단**했고 seg5 모자이크 화면·seg4 아이엠지 메일 원문은 판정 전 다운로드 금지로 못 박았다.
 - (2026-07-30 6대 실측) 업로드 도구는 저장소 밖에 있다: `C:\Users\745ra\.claude\skills\youtube-uploader\scripts\`(`upload-ep03.js`·`publish-ep03.js`·`verify-ep03.js`·`check-links.js`·`fetch-published.js` + OAuth 토큰). 4편은 이 스크립트들을 ep04용으로 복제해 쓴다.
 
 ## 4. 환경 실측치 (반복 사고 방지 — 재확인 불요)
