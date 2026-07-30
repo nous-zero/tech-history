@@ -113,7 +113,9 @@ https://github.com/nous-zero/tech-history
 
 - **`channelSections` API는 폐기되지 않았다.** list/insert/update/delete 4개 메서드 모두 유효(developers.google.com/youtube/v3/docs/channelSections, 2026-07-30 확인). 2021-05-12에 폐기된 것은 `style`·`defaultLanguage`·`localizations`·`targeting` **속성 일부**뿐이다.
 - **채널당 섹션 상한**: API 문서 10개 / Studio 도움말 12개 — **문서 간 불일치**. 우리는 3개만 쓸 것이라 실무상 무관하지만, 숫자를 인용할 때는 이 불일치를 밝힌다.
-- **⚠️ API 유형과 Studio 유형이 일치하지 않는다.** API가 만들 수 있는 유형 10종에는 Studio의 최신 유형(`For you`·`Shorts 줄`·`Posts`·`Top community clips`·`Effects`)이 **없다**. → **API로 전부 처리하려 하면 실패한다.** [추정 — 두 공식 문서 대조에 의한 추론이며, 실제로 insert를 시도해 봐야 확정]
+- **API가 만들 수 있는 유형 10종**: `singlePlaylist`·`multiplePlaylists`·`allPlaylists`·`popularUploads`·`recentUploads`·`subscriptions`·`multipleChannels`·`liveEvents`·`upcomingEvents`·`completedEvents`
+- **Studio가 제공하는 유형 8종**(support.google.com/youtube/answer/3027787): `For you`·`Videos`(동영상·Shorts·라이브를 필터로 고름)·`Playlists`·`Memberships`·`Channels`·`Top community clips`·`Effects`·`Posts`
+- **⚠️ 두 목록이 일치하지 않는다.** Studio에만 있는 `For you`·`Top community clips`·`Effects`·`Posts`는 API `type` 값에 **없다**. 또 우리가 원하는 "쇼츠만 모은 줄"은 Studio의 `Videos` 섹션에서 **Shorts 필터를 고르는 방식**인데, API의 `recentUploads`에는 그런 필터 파라미터가 없다. → **API로 전부 처리하려 하면 2번 줄에서 막힌다.** [추정 — 두 공식 문서 대조에 의한 추론이며, 실제로 `channelSections.insert`를 시도해 봐야 확정]
 
 ### 3-2. 권고 배치 (위→아래)
 
