@@ -10,18 +10,18 @@
 
 | 편 | 제목 | 파일 | 현대 사례 (검증) | 이미지 | 상태 |
 |---|---|---|---|---|---|
-| 1 | 1993년 CGI — 방명록 하나 못 만들던 웹, 서버가 요리를 시작했다 | backend-story-01-cgi.md | 스페이스 잼 1996 사이트 현존 ✅ | 계획 2장 | 기획 |
-| 2 | 1994년 쿠키 — 23세 루 몬툴리가 장바구니 때문에 발명한 웹의 기억 | backend-story-02-cookie.md | 구글 서드파티 쿠키 퇴출 철회(2024.7) ✅ | 계획 2장 | 기획 |
-| 3 | 1995년 PHP — 이력서 조회수 세던 개인 도구가 웹의 74%를 접수했다 | backend-story-03-php.md | PHP 74.5%·WordPress 43.5% (W3Techs) ✅ | 계획 2장 | 기획 |
-| 4 | 2004년 Ruby on Rails — 15분 블로그 데모가 낳은 트위터·깃허브·쇼피파이 | backend-story-04-rails.md | 쇼피파이 BFCM 2025 $146억 ✅ | 계획 2장 | 기획 |
-| 5 | 2000년 REST — 박사논문 한 편이 API의 문법이 되다, 그리고 JSON | backend-story-05-rest-json.md | REST 사용률 93% (Postman 2025) ✅ | 계획 2장 | 기획 |
-| 6 | 2005년 AJAX — 구글맵과 Gmail이 새로고침을 없앤 날 | backend-story-06-ajax.md | Gmail 1GB, 만우절 농담 오인(2004.4.1) ✅ | 계획 2장 | 기획 |
-| 7 | 세션에서 JWT까지 — 링크드인 비밀번호 1억 1,700만 개가 깨진 이유 | backend-story-07-jwt-hashing.md | 링크드인 2012 유출, 72시간 내 90% 크랙 ✅ | 계획 2장 | 기획 |
-| 8 | 1999년 C10K 문제 — 동시접속 1만 명과 Node.js의 웨이터 한 명 | backend-story-08-c10k-node.md | 페이팔 Node 전환: 응답 35% 단축(2013) ✅ | 계획 2장 | 기획 |
-| 9 | 2022년 티켓마스터 마비 — 35억 요청이 가르쳐준 "서버를 키우지 말고 늘려라" | backend-story-09-scaling.md | 테일러 스위프트 티켓 대란·상원 청문회 ✅ | 계획 2장 | 기획 |
-| 10 | 2014년 마이크로서비스 — 넷플릭스는 쪼갰고, 아마존은 다시 합쳐 90%를 아꼈다 | backend-story-10-microservices.md | 프라임 비디오 모놀리스 회귀(2023.3) ✅ | 계획 2장 | 기획 |
-| 11 | 2014년 AWS Lambda — 서버 관리라는 일이 사라지기 시작했다, 그리고 GraphQL | backend-story-11-serverless-graphql.md | Lambda 월 150만+ 고객·수십조 요청 ✅ | 계획 2장 | 기획 |
-| 12 | 2018년 FastAPI와 언어 전쟁 — Java·Go·Node·Python 중 뭘 배워야 하나 (완결) | backend-story-12-languages-fastapi.md | FastAPI 15.1%, Flask 첫 추월(SO 2025) ✅ | 계획 2장 | 기획 |
+| 1 | 1993년 CGI — 방명록 하나 못 만들던 웹, 서버가 요리를 시작했다 | backend-story-01-cgi.md | 스페이스 잼 1996 사이트 현존 ✅ | 계획 2장 | 완성 — 2026-07-30 |
+| 2 | 1994년 쿠키 — 23세 루 몬툴리가 장바구니 때문에 발명한 웹의 기억 | backend-story-02-cookie.md | 구글 서드파티 쿠키 퇴출 철회(2024.7) ✅ | 계획 2장 | 완성 — 2026-07-30 |
+| 3 | 1995년 PHP — 이력서 조회수 세던 개인 도구가 웹의 74%를 접수했다 | backend-story-03-php.md | PHP 74.5%·WordPress 43.5% (W3Techs) ✅ | 계획 2장 | 완성 — 2026-07-30 |
+| 4 | 2004년 Ruby on Rails — 15분 블로그 데모가 낳은 트위터·깃허브·쇼피파이 | backend-story-04-rails.md | 쇼피파이 BFCM 2025 $146억 ✅ | 계획 2장 | 완성 — 2026-07-30 |
+| 5 | 2000년 REST — 박사논문 한 편이 API의 문법이 되다, 그리고 JSON | backend-story-05-rest-json.md | REST 사용률 93% (Postman 2025) ✅ | 계획 2장 | 완성 — 2026-07-30 |
+| 6 | 2005년 AJAX — 구글맵과 Gmail이 새로고침을 없앤 날 | backend-story-06-ajax.md | Gmail 1GB, 만우절 농담 오인(2004.4.1) ✅ | 계획 2장 | 완성 — 2026-07-30 |
+| 7 | 세션에서 JWT까지 — 링크드인 비밀번호 1억 1,700만 개가 깨진 이유 | backend-story-07-jwt-hashing.md | 링크드인 2012 유출, 72시간 내 90% 크랙 ✅ | 계획 2장 | 완성 — 2026-07-30 |
+| 8 | 1999년 C10K 문제 — 동시접속 1만 명과 Node.js의 웨이터 한 명 | backend-story-08-c10k-node.md | 페이팔 Node 전환: 응답 35% 단축(2013) ✅ | 계획 2장 | 완성 — 2026-07-30 |
+| 9 | 2022년 티켓마스터 마비 — 35억 요청이 가르쳐준 "서버를 키우지 말고 늘려라" | backend-story-09-scaling.md | 테일러 스위프트 티켓 대란·상원 청문회 ✅ | 계획 2장 | 완성 — 2026-07-30 |
+| 10 | 2014년 마이크로서비스 — 넷플릭스는 쪼갰고, 아마존은 다시 합쳐 90%를 아꼈다 | backend-story-10-microservices.md | 프라임 비디오 모놀리스 회귀(2023.3) ✅ | 계획 2장 | 완성 — 2026-07-30 |
+| 11 | 2014년 AWS Lambda — 서버 관리라는 일이 사라지기 시작했다, 그리고 GraphQL | backend-story-11-serverless-graphql.md | Lambda 월 150만+ 고객·수십조 요청 ✅ | 계획 2장 | 완성 — 2026-07-30 |
+| 12 | 2018년 FastAPI와 언어 전쟁 — Java·Go·Node·Python 중 뭘 배워야 하나 (완결) | backend-story-12-languages-fastapi.md | FastAPI 15.1%, Flask 첫 추월(SO 2025) ✅ | 계획 2장 | 완성 — 2026-07-30 |
 
 발행 일정: 01 프론트엔드 시리즈 완주(8/4 예정) 후 확정. 발행 주기·시각은 프론트엔드 실측 데이터(링크드인 골든타임 16:00) 승계 예정 — 시작 전 재검증(규칙 1-6). 게시 이력은 publish-log.md.
 
