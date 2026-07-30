@@ -71,6 +71,7 @@
 | asset-scout | BGM Wayback 스냅샷(시급) + 소재 조달 | `af5bd9def977d2dd6` | 🔄 |
 | visual-designer | 썸네일 주안+alt | `a82e140a278b5d2ae` | ✅ 완료 |
 | auditor | **발행 전 독립 감사(2단계 설계 — 본편 먼저·쇼츠 마커 후 통합)** | `a18170f38be29f74e` | 🔄 |
+| publisher | 업로드 스크립트 4종 선준비(실행 금지 — 드라이 파스까지) | `acbff00dc9e074454` | 🔄 |
 | marketing-analyst 하위 #1 | 브라우저 댓글 census + 채널 홈 레이아웃 실측 | `ac04fcbb5a20482f2` | 🔄 |
 | marketing-analyst 하위 #2 | force-ssl 스코프·커뮤니티 탭 요건·재생목록 SEO 리서치 | `a0db61574764c6239` | 🔄 |
 
