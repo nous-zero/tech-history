@@ -1,0 +1,29 @@
+{
+  "_읽는_법": "편별 본편 BGM 지정표. 음원 파일 자체는 video/output/ 아래라 .gitignore 대상이므로 저장소에 없다 — 파일이 사라지면 download_url 로 다시 받고 sha256 으로 동일본인지 확인한다. 라이선스 근거 원문은 refs/asset-ledger.md 에 있다.",
+  "_레벨_기준": "내레이션 대비 -19 LU(허용 -18~-22). 고정 게인이 아니라 video/bgm.py 가 매번 두 소리를 재서 계산한다.",
+  "episodes": {
+    "04": {
+      "file": "video/output/assets/bgm/pixabay-568180-corporate-explainer-video.mp3",
+      "title": "Corporate Explainer Video",
+      "artist": "Alex Morgan (Pixabay user alex-morgan-54692529)",
+      "source": "Pixabay Music",
+      "source_url": "https://pixabay.com/music/corporate-corporate-explainer-video-568180/",
+      "download_url": "https://cdn.pixabay.com/download/audio/2026/07/15/audio_997c185514.mp3?filename=alex-morgan-corporate-explainer-video-568180.mp3",
+      "license": "Pixabay Content License",
+      "license_url": "https://pixabay.com/service/license-summary/",
+      "attribution_required": false,
+      "commercial_use": true,
+      "cross_platform": true,
+      "youtube_content_id": false,
+      "ai_generated": false,
+      "duration_s": 209.52,
+      "sample_rate": 48000,
+      "channels": 2,
+      "source_lufs": -9.3,
+      "sha256": "9101d283336860d0c3c6238c1fce793e39746c1104e9ac875c7bd24ecfc94271",
+      "verified_on": "2026-07-30",
+      "verified_by": "audio-producer",
+      "mood_note": "코퍼레이트/업비트/인스파이어링(피아노+기타). 1993~95 실리콘밸리 창업·상장 열기용. 보컬 없음. 설명영상 배경음으로 만들어진 트랙이라 내레이션 아래에 깔기 적합."
+    }
+  }
+}
