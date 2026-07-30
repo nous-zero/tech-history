@@ -1571,12 +1571,15 @@ class Short04Base(ShortBase):
         문다(--audit 실측 0.48 침범). 폭 6.0(±3.0)으로 좁혀 재정의 — 기본판은 기존
         편 재렌더 동일성을 위해 불변."""
         lines = self.SPEC["hook"]
-        t1 = ktext(lines[0], fs=62, color=WHITE, max_w=6.0).move_to(UP * 1.6)
-        t2 = ktext(lines[1], fs=74, color=AMBER, max_w=6.0).move_to(UP * 0.1)
+        # 1·2행 세로 분리 + 등장 배율 축소 — 감사 검수 A_1.5·B_1.5 실측: 2행이 1.35배
+        # 확대 상태로 들어오며 페이드 중 1행과 글자가 포개짐(2행은 줄바꿈돼 키가 커서
+        # 확대 시 1행 영역까지 올라온다). 위치 이격 0.7 + 배율 1.15 로 등장 순간에도 분리.
+        t1 = ktext(lines[0], fs=62, color=WHITE, max_w=6.0).move_to(UP * 2.3)
+        t2 = ktext(lines[1], fs=74, color=AMBER, max_w=6.0).move_to(DOWN * 0.1)
         frame = self.camera.frame
         frame.scale(1.12)
-        self.play(FadeIn(t1, scale=1.2), frame.animate.scale(1 / 1.12), run_time=0.4)
-        self.play(FadeIn(t2, scale=1.35),
+        self.play(FadeIn(t1, scale=1.1), frame.animate.scale(1 / 1.12), run_time=0.4)
+        self.play(FadeIn(t2, scale=1.15),
                   Flash(t2.get_center(), color=AMBER, flash_radius=2.2), run_time=0.45)
         self.play(frame.animate.scale(0.97), run_time=max(0.2, HOOK_D - 0.85),
                   rate_func=linear)
@@ -1590,6 +1593,31 @@ class Short04Base(ShortBase):
         self.play(FadeIn(t, shift=UP * 0.2), FadeIn(btn, scale=1.4), FadeIn(cc),
                   run_time=0.5)
         self.wait(END_D - 0.5)
+
+    def sub(self, txt):
+        """4편판 자막 — 기준선을 화면 75% 지점으로 상향(기본판 81.9% ≈ y1573px 는
+        쇼츠 하단 제목·채널 오버레이 구역. 감사 검수 A_8·A_18·B_10 실측 y1570~1610
+        → 약 133px 상향). 기본판은 기존 편 재렌더 동일성을 위해 불변."""
+        t = Text(txt, font=KFONT, font_size=40, color=WHITE, weight="BOLD")
+        if t.width > SUB_W - 0.5:
+            t.scale_to_fit_width(SUB_W - 0.5)
+        t.move_to(DOWN * 4.0)
+        bg = RoundedRectangle(corner_radius=0.18, width=t.width + 0.5, height=t.height + 0.42)
+        bg.set_fill("#000000", 0.55).set_stroke(width=0).move_to(t)
+        grp = VGroup(bg, t)
+        frame = self.camera.frame
+        base_w = grp.width
+
+        def pin(m):
+            k = frame.width / config.frame_width
+            m.set_width(base_w * k)
+            m.move_to(frame.get_center() + DOWN * frame.height * 0.25)
+
+        grp.add_updater(pin)
+        if self.subtitle:
+            self.remove(self.subtitle)
+        self.add(grp)
+        self.subtitle = grp
 
     def ticker_panel(self, w=6.0, h=5.0, pos=UP * 1.6):
         """재현 시세판(검은 CRT) — 본편 ticker_panel 의 세로 구도판. 로고 0·가공 티커."""
@@ -1752,11 +1780,13 @@ class Short04Base(ShortBase):
         cap = self.repro_tag("시세판 (재현 화면)")
 
         def a0(d):
-            date = chip("1995. 8. 9 — 상장", RED, 26, max_w=5.0).move_to(UP * 4.6)
+            # 세로 배치 계획(감사 검수 A_18 칩 3개 충돌의 수리 — 층을 분리):
+            #   date 4.35 / ipo 3.0 / delay 1.6 / 라벨 0.45 / 막대 -0.26~-2.9 / band -3.8
+            date = chip("1995. 8. 9 — 상장", RED, 26, max_w=5.0).move_to(UP * 4.35)
             ipo = VGroup(ktext("공모가", fs=30, color=GRAY, max_w=3.0),
                          Text("$28.00", font=MONO, font_size=80, color=WHITE,
                               weight="BOLD"))
-            ipo.arrange(DOWN, buff=0.25).move_to(UP * 2.4)
+            ipo.arrange(DOWN, buff=0.25).move_to(UP * 3.0)
             self.st["ipo"] = ipo
             self.play(FadeIn(date, shift=DOWN * 0.2), FadeIn(cap), run_time=0.3)
             self.act(d - 0.3, FadeIn(ipo, scale=1.2))
@@ -1770,8 +1800,8 @@ class Short04Base(ShortBase):
                 buys.add(b)
             sell = Rectangle(width=2.4, height=0.36).set_stroke(width=0)
             sell.set_fill("#6B7280", 0.9).move_to(RIGHT * 1.7 + DOWN * 2.9)
-            b_lb = chip("사자", AMBER, 24, max_w=2.0).move_to(LEFT * 1.7 + UP * 0.3)
-            s_lb = chip("팔자", GRAY, 24, max_w=2.0).move_to(RIGHT * 1.7 + UP * 0.3)
+            b_lb = chip("사자", AMBER, 24, max_w=2.0).move_to(LEFT * 1.7 + UP * 0.45)
+            s_lb = chip("팔자", GRAY, 24, max_w=2.0).move_to(RIGHT * 1.7 + UP * 0.45)
             self.act(d, FadeIn(b_lb), FadeIn(s_lb), FadeIn(sell),
                      LaggedStart(*[FadeIn(b, shift=UP * 0.2) for b in buys],
                                  lag_ratio=0.12), rt=min(1.6, d * 0.6))
@@ -1781,7 +1811,8 @@ class Short04Base(ShortBase):
             band.set_stroke(CRT_DIM, 3).set_fill(CRT_BG, 1).move_to(DOWN * 3.8)
             nscp = Text("NSCP  --.--", font=MONO, font_size=32, color=AMBER,
                         weight="BOLD").move_to(band)
-            delay = chip("약 2시간 지연", RED, 28, max_w=4.0).move_to(UP * 0.3)
+            # 라벨(0.45)과 공모가(3.0) 사이 빈 층(1.6) — 칩끼리 겹치지 않는다
+            delay = chip("약 2시간 지연", RED, 28, max_w=4.0).move_to(UP * 1.6)
             t1 = max(0.3, min(0.7, d * 0.4))
             self.play(FadeIn(band), FadeIn(nscp), run_time=t1)
             self.act(d - t1, FadeIn(delay, scale=1.25),
@@ -1795,7 +1826,10 @@ class Short04Base(ShortBase):
         card.set_stroke(WHITE, 4).set_fill(EP04_PAPER, 1).move_to(UP * 1.0)
         base_y, scale = card.get_bottom()[1] + 0.7, 0.082
         py = lambda p: base_y + (p - 20) * scale  # noqa: E731
-        xs = {"open": -2.4, "first": -0.9, "peak": 0.7, "close": 2.4}
+        # close 2.4→2.2: $58.25 라벨이 카드 우측 경계를 넘어 우측 UI 대역(x986px)에
+        # 걸렸다(감사 검수 A_28 실측 — 내 대역 검사는 감사 시점의 줌이 바닥까지 안 가
+        # 경계 0.0~0.05 차로 못 잡은 한계. 라벨을 안쪽으로 넣어 원인 제거).
+        xs = {"open": -2.4, "first": -0.9, "peak": 0.7, "close": 2.2}
         cap = self.repro_tag("주가 (데이터 재구성)")
 
         def a0(d):
@@ -1826,6 +1860,7 @@ class Short04Base(ShortBase):
             dot_cl = Dot([xs["close"], py(58.25), 0], radius=0.12, color=INK)
             lb_cl = Text("$58.25", font=MONO, font_size=30, color=INK,
                          weight="BOLD").next_to(dot_cl, DOWN, buff=0.14)
+            lb_cl.shift(LEFT * 0.55)   # 라벨 우단을 카드 안쪽으로(A_28 수리)
             t1 = max(0.3, min(0.8, d * 0.35))
             self.play(Create(rise), FadeIn(dot_pk, scale=1.4), FadeIn(lb_pk), run_time=t1)
             t2 = min(0.5, max(0.3, d * 0.15))
