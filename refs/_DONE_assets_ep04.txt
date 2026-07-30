@@ -1,0 +1,73 @@
+과업 1 완료 — 4편(Mosaic·Netscape) 소재 조달 (asset-scout, 2026-07-30)
+
+총괄: 실사 24건 다운로드·등록(안전 8 / 조건부 15 / 보류성 조건부 1) + 재사용 2건 승계
++ 수치 데이터 3종(전부 1차 출처) + BGM 증빙(과업 0). 대장-디스크 기계 전수 대조 통과
+(24=24, 고아 0). 상세·근거는 전부 refs/asset-ledger.md "4편" 절.
+
+== 조달 목록 (파일명 / 출처 / 라이선스) ==
+[재사용 승계]
+EP04-REU-01 ep03_first_website.png / Commons(The_World_Wide_Web_project.png) / PD-text — "재현 화면" 표기 승계
+EP04-REU-02 ep03_free_release_p1/p2.jpg / CERN CDS 1164399 / © CERN — 4편 설명란 크레딧 재기재 의무
+[시대·현대 스톡 8]
+EP04-IMG-01 ep04_vt100_terminal.jpg / Commons DEC_VT100_terminal / CC BY 2.0 (Jason Scott)
+EP04-IMG-02 ep04_monochrome_crt.jpg / Commons Schneider-MM12 / PD
+EP04-IMG-03 ep04_computer_room_1990s.jpg / Commons(LSE Flickr Commons) / "No known restrictions"(정식 라이선스 아님) — 인물 다수, counsel 회부
+EP04-IMG-04 ep04_office_worker_late80s.jpg / Commons(DPLA·Columbus Lib) / PD — 인물 1인, counsel 회부
+EP04-IMG-05 ep04_home_office_1997.jpg / Commons(Infrogmation) / CC BY-SA 4.0
+EP04-IMG-06 ep04_server_racks.jpg / Pexels 4508751 / Pexels License
+EP04-IMG-07 ep04_datacenter_closeup.jpg / Pexels 37730212 / Pexels License
+EP04-IMG-08 ep04_stock_chart_screen.jpg / Pexels 159888 / Pexels License(화면 로고 무 검수)
+[인물·SGI·MS·증권 10]
+EP04-IMG-09 ep04_jim_clark_2013.jpg / Commons James_H._Clark / CC BY-SA 3.0 — 초상 6조건·저해상·연도 상충 유의
+EP04-IMG-10 ep04_marc_andreessen_2013.jpg / Commons / CC BY 2.0 (JD Lasica) — "2010년대 촬영" 표기 의무
+EP04-IMG-11 ep04_marc_andreessen_2008.jpg / Commons / CC BY 2.0 (Joi Ito) — 고해상 주력, 동일 조건
+EP04-IMG-12 ep04_sgi_indigo_front.jpg / Commons / CC BY-SA 3.0 (RCS/RI)
+EP04-IMG-13 ep04_sgi_indigo_crt_irix.jpg / Commons / CC0 (Wolfgang Stief) — SGI 주력
+EP04-IMG-14 ep04_ms_building92.jpg / Commons / CC BY-SA 4.0 (Coolcaesar, 2016 촬영 — 1995 직배치 금지)
+EP04-IMG-15 ep04_ms_building92_alt.jpg / Commons / CC BY 3.0
+EP04-IMG-16 ep04_ms_building111.jpg / Commons / CC BY-SA 4.0 (간판 무)
+EP04-IMG-17 ep04_cbot_displays_1992.jpg / Commons / CC BY-SA 2.0 (Plougmann, 1992 실촬영) — seg0/10 주력
+EP04-IMG-18 ep04_cbot_trading_1992.jpg / Commons / CC BY-SA 2.0 — 인물 다수, counsel 회부
+[UIUC·전산실 6]
+EP04-IMG-19 ep04_uiuc_altgeld_hall.jpg / Commons / PD (Daderot) — 1897 준공=시대 중립
+EP04-IMG-20 ep04_uiuc_illini_union.jpg / Commons / PD (Daderot)
+EP04-IMG-21 ep04_uiuc_quad_pano.jpg / Commons / CC BY-SA 4.0 (Schwen) — 파노라마 주력
+EP04-IMG-22 ep04_computerlab_1980s_loc.jpg / Commons TIF(LCCN 2011636104, Highsmith/LOC) / PD — 연도 자막 단정 금지·초중등 교실(보조 한정)
+EP04-IMG-23 ep04_computerlab_1995_testex.jpg / Commons / CC BY-SA 4.0 (Testex AG, 1995 실촬영) — 원거리 인물 1, counsel 대조
+EP04-IMG-24 ep04_home_pc_1992.jpg / Commons / CC BY 2.0 (Infrogmation, 1992 실촬영) — 저해상 인서트용
+[수치 데이터 — 다운로드 없음]
+EP04-DAT-01 웹 성장(Gray/MIT stuff.mit.edu 미러 + ISC) / DAT-02 점유율(독립 3출처, 70~90% "기관별 상이" 서술 필수) / DAT-03 나스닥 지수(FRED CSV 직접 실측 7포인트)
+[오디오 — 과업 0]
+EP04-AUD-01 BGM Pixabay #568180 / 증빙⑨ Wayback https://web.archive.org/web/20260729055902/https://pixabay.com/service/license-summary/ · 증빙⑩ 대체 증거 refs/evidence/ep04-bgm/(RFC 3161 타임스탬프, 상세 README) · 증빙⑪ 발행 직전 재실측=release-director 게이트
+
+== 미조달·확보 실패 (사유 실측) ==
+- 에릭 비나 인물: Commons·위키 2각도 실측 결과 자유 라이선스 사진 부재 → counsel §4 대체안(인물 미등장 연출)
+- 1993년 당대 촬영 UIUC 캠퍼스·대학 전산실: 자유 라이선스 미발견 → 시대 중립 건물·1995 전산실로 대체
+- 1995-08-09 당일 보도 사진: 판정서 §4 지시대로 추적하지 않음(유료·금지)
+- 트랙 페이지 Wayback: Pixabay가 archive.org 차단(실측) → RFC 3161 대체(위)
+
+== 재현 대상 (조달하지 않음 — asset-creator/video-producer 발주) ==
+시세판(seg0/10)·터미널(seg2)·IMG 메일(seg4, 원문 페이지 열람 금지)·모자이크(seg5, 원본
+스크린샷 열람 금지)·차트 4종(seg6/9/11/12, 수치는 EP04-DAT)·급여 자막(seg3)·빈 편집기
++"코드명: 모질라"(seg8)·실루엣(seg13)·아웃트로(seg14). 캡션은 counsel §6-3 "20자+3.5초".
+
+== copyright-counsel 회부 목록 (판정 전 본편 투입 보류) ==
+IMG-03(전산실, 인물 다수)·IMG-04(사무원 정면 1인)·IMG-18(CBOT 피트 군중)·IMG-23(원거리 1인 — 대조만)
+
+== 다른 팀 전달 메모 ==
+1. planner-writer·video-producer: "Beckman Institute에서 Mosaic 개발" 표현 금지 — 1차 사료
+   (1993 COPYRIGHT 파일 주소 65~67행) 기준 실주소는 605 E. Springfield(Computing Applications Bldg).
+2. 차트 제작자: GVU 4차(1995-10)에는 브라우저 문항 없음 — 점유율 출처로 오인용 금지(대장 DAT-02 주석).
+3. release-director: BGM 발행 직전 hasYoutubeContentId 재실측(증빙⑪)이 발행 게이트에 걸려 있음.
+
+== 커밋 이력 ==
+a52f1e7 과업0 BGM 증빙 / 72b0d06 증거 EOL 고정 / beeecdb 재사용 승계·재현 목록 /
+4d5e8d6 3편 소급 정합(총감독 확정안 반영+본선 재실측 — 별칭 4·파생 1·쪽수 정정) /
+c5f5f2c 수치 3종 / f2436fd 스톡 8건 / 6f00fe0 인물·SGI·MS·증권 10건 / 490aad7 UIUC 6건
+
+== 확인한 것 / 못 한 것 ==
+확인: 24파일 전부 md5·해상도 본선 재실측, 라이선스는 파일 단위 extmetadata/페이지 실측
+(Commons 5건은 sha1 역조회로 파일 동일성 기계 확정), 대장-디스크 전수 상호 대조(고아 0).
+못 함: ①counsel 회부 4건의 초상 판정(관할 밖) ②IMG-09 클라크 사진의 촬영 연도 확정
+(파일 date와 설명 연대 상충 — 캡션 단정 금지로 방어) ③BGM 증빙⑪(발행 직전에만 가능)
+④일꾼 산출 중 육안 검수는 일꾼+본선 축소본 검수 병행이나 원본 픽셀 단위 전수 검수는 아님.
