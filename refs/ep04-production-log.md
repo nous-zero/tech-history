@@ -61,6 +61,7 @@
 | video-producer | 선행②③④ 조립기 안전장치 | `a6b228c9dc4be20fe` | 🔄 |
 | copyright-counsel | 4편 소재 **선행 법무 판정** | `a541df49978cf920f` | 🔄 |
 | audio-producer #2 | 캐글 음성 생산 + STT 전수 검수 | `a6333c78931694396` | 🔄 |
+| channel-adapter | 유튜브 메타·SEO 원고(제목 확정 → 썸네일 해금) | `a0c8df4598e1cbfb1` | 🔄 |
 
 ## 3. 결정·실측 기록 (세션 소멸 대비 — 여기에 누적)
 
