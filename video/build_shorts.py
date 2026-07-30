@@ -1536,6 +1536,330 @@ class Short03B(Short03Base):
                      11: [None, "특허료 없이", "공짜"]}}
 
 
+# ---------- 4편(Mosaic·Netscape) — 실사 0, 전부 재현·데이터 그래픽 ----------------
+EP04_PAPER = "#F6F1E4"    # 본편 seg11 차트·썸네일 인셋과 동일 팔레트(시각 언어 통일)
+EP04_GREEN = "#0E7B3D"
+EP04_RED_PK = "#B91C1C"
+CRT_BG = "#0A0F0C"
+CRT_DIM = "#4B5563"
+CRT_GREEN = "#22C55E"
+
+
+class Short04Base(ShortBase):
+    """4편 세그 장면(세로 구도·다크). 본편 Episode04 연출을 9:16으로 재구성.
+
+    소재: **실사 0장** — 시세판·메일·브라우저·차트 전부 관용 문법 재현+사실 데이터
+    (본편 counsel 판정 §4 승계, 저작권 위험 0). IMG-05 등 CC 사진은 쓰지 않는다
+    (총감독 조건: 사용 시 counsel 선행 → 미사용 권장을 채택).
+    BGM 은 build() 의 자체 합성(-13dB 언더레이) — 내레이션 동반 필수 조건 충족.
+
+    배치 규율: 4편부터 쇼츠 UI 대역(우측 12%=x>3.42·하단 20%=y<-4.8)이 **차단**이다
+    — 본문 요소를 x ±3.3 안에 설계한다(자막은 감사 제외 대상이라 기존 위치 유지).
+    법무 표기: 재현 컷마다 표기 칩을 세그 지속 내내 유지(counsel §6-2 — 배속 재수출도
+    동일 소재이므로 표기 승계. 쇼츠는 세그당 7.7~12.5초라 3.5초 하한을 크게 상회)."""
+
+    def construct(self):
+        self.st = {}
+        super().construct()
+
+    def repro_tag(self, txt):
+        """법무 표기 칩 — 좌상단 고정(팝 자리 UP*5.0~5.4 와 분리). 세그 내내 유지."""
+        return chip(txt, INK, 22, max_w=4.6).move_to(UP * 6.6 + LEFT * 1.8)
+
+    def hook_card(self):
+        """4편판 훅 — 기본판(SAFE_W 7.6)은 우측 UI 차단 대역(±3.42, 줌 시 ±3.15)을
+        문다(--audit 실측 0.48 침범). 폭 6.0(±3.0)으로 좁혀 재정의 — 기본판은 기존
+        편 재렌더 동일성을 위해 불변."""
+        lines = self.SPEC["hook"]
+        t1 = ktext(lines[0], fs=62, color=WHITE, max_w=6.0).move_to(UP * 1.6)
+        t2 = ktext(lines[1], fs=74, color=AMBER, max_w=6.0).move_to(UP * 0.1)
+        frame = self.camera.frame
+        frame.scale(1.12)
+        self.play(FadeIn(t1, scale=1.2), frame.animate.scale(1 / 1.12), run_time=0.4)
+        self.play(FadeIn(t2, scale=1.35),
+                  Flash(t2.get_center(), color=AMBER, flash_radius=2.2), run_time=0.45)
+        self.play(frame.animate.scale(0.97), run_time=max(0.2, HOOK_D - 0.85),
+                  rate_func=linear)
+        self.play(FadeOut(t1), FadeOut(t2), frame.animate.scale(1 / 0.97), run_time=0.25)
+
+    def end_card(self):
+        """4편판 엔딩 — 문구 폭을 ±2.9 로 좁힘(기본판 fs52 는 ±3.43 = 대역 0.28 침범)."""
+        t = ktext("전체 이야기는 채널에서", fs=44, color=WHITE, max_w=5.8).move_to(UP * 0.8)
+        btn = chip("구독", RED, 46).move_to(DOWN * 0.6)
+        cc = Text("© nous-zero", font=KFONT, font_size=26, color=GRAY).move_to(DOWN * 2.0)
+        self.play(FadeIn(t, shift=UP * 0.2), FadeIn(btn, scale=1.4), FadeIn(cc),
+                  run_time=0.5)
+        self.wait(END_D - 0.5)
+
+    def ticker_panel(self, w=6.0, h=5.0, pos=UP * 1.6):
+        """재현 시세판(검은 CRT) — 본편 ticker_panel 의 세로 구도판. 로고 0·가공 티커."""
+        panel = RoundedRectangle(corner_radius=0.2, width=w, height=h)
+        panel.set_stroke(CRT_DIM, 3).set_fill(CRT_BG, 1).move_to(pos)
+        rows_spec = [("VTLK", "12.38", CRT_GREEN), ("DYNC", " 8.10", CRT_DIM),
+                     ("NSCP", "--.--", AMBER), ("MERX", "21.05", CRT_GREEN)]
+        rows = VGroup()
+        nscp = None
+        for i, (tk, px, col) in enumerate(rows_spec):
+            y = panel.get_top()[1] - 1.1 - i * 0.95
+            t_tk = Text(tk, font=MONO, font_size=34, color=col, weight="BOLD")
+            t_px = Text(px, font=MONO, font_size=34, color=col, weight="BOLD")
+            t_tk.move_to([panel.get_left()[0] + 1.2, y, 0])
+            t_px.move_to([panel.get_right()[0] - 1.3, y, 0])
+            row = VGroup(t_tk, t_px)
+            rows.add(row)
+            if tk == "NSCP":
+                nscp = row
+        band = RoundedRectangle(corner_radius=0.08, width=w - 0.4, height=0.8)
+        band.set_fill(AMBER, 0.14).set_stroke(AMBER, 2)
+        band.move_to([panel.get_center()[0], nscp.get_center()[1], 0])
+        return VGroup(panel, band, rows), nscp
+
+    # --- 0: 훅 상황 — 한 종목이 열리지 않는다 ---
+    def seg000(self, info):
+        board, nscp = self.ticker_panel()
+        cap = self.repro_tag("시세판 (재현 화면)")
+        date = chip("1995. 8. 9 — 나스닥", INK, 26, max_w=5.0).move_to(UP * 4.6)
+        self.st["nscp"] = nscp
+
+        def a0(d):
+            self.play(FadeIn(date, shift=DOWN * 0.2), FadeIn(cap), run_time=0.3)
+            self.act(d - 0.3, FadeIn(board, scale=1.05))
+
+        def a1(d):
+            delay = chip("첫 거래 — 열리지 않음", RED, 30, max_w=5.4)
+            delay.next_to(board, DOWN, buff=0.45)
+            t1 = max(0.3, min(0.6, d * 0.3))
+            self.play(FadeIn(delay, scale=1.2),
+                      Indicate(self.st["nscp"], color=AMBER, scale_factor=1.08),
+                      run_time=t1)
+            self.act(d - t1, Flash(self.st["nscp"].get_center(), color=AMBER,
+                                   flash_radius=1.6))
+
+        def a2(d):
+            who = chip("창업 16개월 — 아직 적자", INK, 28, max_w=5.6).move_to(DOWN * 3.4)
+            self.act(d, FadeIn(who, shift=UP * 0.2))
+
+        self.beats(info, [a0, a1, a2])
+
+    # --- 3: 시급 $6.85 알바생 (대화는 각색) ---
+    def seg003(self, info):
+        def a0(d):
+            place = chip("일리노이대 — NCSA", INK, 26, max_w=5.0).move_to(UP * 4.6)
+            self.act(d, FadeIn(place, shift=DOWN * 0.2))
+
+        def a1(d):
+            wage = VGroup(Text("$6.85", font=MONO, font_size=96, color=AMBER,
+                               weight="BOLD"),
+                          ktext("시간당 — 실제 기록", fs=30, color=GRAY, max_w=5.0))
+            wage.arrange(DOWN, buff=0.3).move_to(UP * 2.2)
+            self.st["wage"] = wage
+            self.act(d, FadeIn(wage, scale=1.25))
+
+        def a3(d):
+            b1 = chip("연구 문서인데, 글자면 충분하잖아", GRAY, 26, max_w=6.0)
+            b1.move_to(DOWN * 0.6 + LEFT * 0.3)
+            self.st["b1"] = b1
+            self.act(d, FadeIn(b1, shift=UP * 0.15))
+
+        def a4(d):
+            b2 = chip("사람들은 그림 없으면 안 봐요", BLUE, 28, max_w=6.0)
+            b2.move_to(DOWN * 1.9 + RIGHT * 0.2)
+            self.act(d, FadeIn(b2, scale=1.15))
+
+        def a5(d):
+            note = chip("대화는 각색 — 시급은 실제", GRAY, 24, max_w=5.6)
+            note.move_to(DOWN * 3.4)
+            self.act(d, FadeIn(note, shift=UP * 0.15))
+
+        self.beats(info, [a0, a1, None, a3, a4, a5, None])
+
+    # --- 4: 1993-02-25 IMG 태그 제안 메일 (재현) ---
+    def seg004(self, info):
+        mail = RoundedRectangle(corner_radius=0.2, width=6.0, height=4.4)
+        mail.set_stroke(WHITE, 4).set_fill("#F9FAFB", 1).move_to(UP * 1.6)
+        cap = self.repro_tag("제안 메일 (재현 화면)")
+
+        def a0(d):
+            date = chip("1993. 2. 25 — 공개 게시판", INK, 24, max_w=5.6).move_to(UP * 4.6)
+            subject = Text("proposed new tag:", font=MONO, font_size=30,
+                           color=INK, weight="BOLD")
+            subject.move_to(mail.get_top() + DOWN * 0.8)
+            self.st["mail"] = mail
+            t1 = max(0.3, min(0.7, d * 0.35))
+            self.play(FadeIn(date, shift=DOWN * 0.2), FadeIn(cap), run_time=0.3)
+            self.play(FadeIn(mail), FadeIn(subject), run_time=t1)
+            self.hold(d - t1 - 0.3)
+
+        def a1(d):
+            body = Text('<IMG SRC="...">', font=MONO, font_size=40,
+                        color="#B45309", weight="BOLD")
+            body.move_to(self.st["mail"].get_center() + DOWN * 0.4)
+            self.st["body"] = body
+            t1 = max(0.3, min(0.7, d * 0.4))
+            self.play(FadeIn(body, scale=1.3), run_time=t1)
+            self.act(d - t1, Flash(body.get_center(), color=AMBER, flash_radius=1.8))
+
+        def a2(d):
+            what = chip("그림을 문서 안에 박는 명령", BLUE, 26, max_w=6.0)
+            what.move_to(DOWN * 2.0)
+            self.act(d, FadeIn(what, shift=UP * 0.15))
+
+        self.beats(info, [a0, a1, a2, None])
+
+    # --- 5: 1993-04-22 모자이크 공개 (재현 브라우저) ---
+    def seg005(self, info):
+        win = RoundedRectangle(corner_radius=0.2, width=6.0, height=5.6)
+        win.set_stroke(WHITE, 4).set_fill("#EDEDED", 1).move_to(UP * 1.2)
+        cap = self.repro_tag("모자이크 (재현 화면)")
+
+        def a0(d):
+            date = chip("1993. 4. 22 — 정식 공개", RED, 24, max_w=5.6).move_to(UP * 4.7)
+            bar = Rectangle(width=6.0, height=0.5).set_stroke(width=0)
+            bar.set_fill("#D1D5DB", 1).move_to(win.get_top() + DOWN * 0.25)
+            lines = VGroup()
+            for i, wf in enumerate((0.85, 0.7, 0.8, 0.55)):
+                ln = Line(ORIGIN, RIGHT * 4.6 * wf).set_stroke("#9CA3AF", 6)
+                ln.move_to(win.get_corner(UL) + RIGHT * (0.7 + 4.6 * wf / 2)
+                           + DOWN * (1.0 + i * 0.5))
+                lines.add(ln)
+            self.st["win"] = win
+            t1 = max(0.3, min(0.8, d * 0.4))
+            self.play(FadeIn(date, shift=DOWN * 0.2), FadeIn(cap), run_time=0.3)
+            self.play(FadeIn(win), FadeIn(bar),
+                      LaggedStart(*[Create(l) for l in lines], lag_ratio=0.15),
+                      run_time=t1)
+            self.hold(d - t1 - 0.3)
+
+        def a1(d):
+            img = RoundedRectangle(corner_radius=0.1, width=3.2, height=2.2)
+            img.set_stroke(BLUE, 4).set_fill("#DBEAFE", 1)
+            img.move_to(self.st["win"].get_center() + DOWN * 1.0)
+            mount = Triangle().scale(0.4).set_stroke(BLUE, 3).set_fill(BLUE, 0.5)
+            mount.move_to(img.get_center() + DOWN * 0.2)
+            t1 = max(0.3, min(0.8, d * 0.4))
+            self.play(FadeIn(VGroup(img, mount), scale=1.35), run_time=t1)
+            self.act(d - t1, Flash(img.get_center(), color=BLUE, flash_radius=2.0))
+
+        def a2(d):
+            ez = chip("설치 — 몇 번 클릭이면 끝", EP04_GREEN, 26, max_w=5.8)
+            ez.move_to(DOWN * 2.6)
+            self.act(d, FadeIn(ez, shift=UP * 0.15))
+
+        self.beats(info, [a0, a1, a2])
+
+    # --- 10: 상장일 — 공모가 28, 주문 폭주 ---
+    def seg010(self, info):
+        cap = self.repro_tag("시세판 (재현 화면)")
+
+        def a0(d):
+            date = chip("1995. 8. 9 — 상장", RED, 26, max_w=5.0).move_to(UP * 4.6)
+            ipo = VGroup(ktext("공모가", fs=30, color=GRAY, max_w=3.0),
+                         Text("$28.00", font=MONO, font_size=80, color=WHITE,
+                              weight="BOLD"))
+            ipo.arrange(DOWN, buff=0.25).move_to(UP * 2.4)
+            self.st["ipo"] = ipo
+            self.play(FadeIn(date, shift=DOWN * 0.2), FadeIn(cap), run_time=0.3)
+            self.act(d - 0.3, FadeIn(ipo, scale=1.2))
+
+        def a1(d):
+            buys = VGroup()
+            for i in range(7):
+                b = Rectangle(width=2.4, height=0.36).set_stroke(width=0)
+                b.set_fill(AMBER, 0.9)
+                b.move_to(LEFT * 1.7 + DOWN * (2.9 - i * 0.44))
+                buys.add(b)
+            sell = Rectangle(width=2.4, height=0.36).set_stroke(width=0)
+            sell.set_fill("#6B7280", 0.9).move_to(RIGHT * 1.7 + DOWN * 2.9)
+            b_lb = chip("사자", AMBER, 24, max_w=2.0).move_to(LEFT * 1.7 + UP * 0.3)
+            s_lb = chip("팔자", GRAY, 24, max_w=2.0).move_to(RIGHT * 1.7 + UP * 0.3)
+            self.act(d, FadeIn(b_lb), FadeIn(s_lb), FadeIn(sell),
+                     LaggedStart(*[FadeIn(b, shift=UP * 0.2) for b in buys],
+                                 lag_ratio=0.12), rt=min(1.6, d * 0.6))
+
+        def a2(d):
+            band = RoundedRectangle(corner_radius=0.12, width=4.4, height=0.9)
+            band.set_stroke(CRT_DIM, 3).set_fill(CRT_BG, 1).move_to(DOWN * 3.8)
+            nscp = Text("NSCP  --.--", font=MONO, font_size=32, color=AMBER,
+                        weight="BOLD").move_to(band)
+            delay = chip("약 2시간 지연", RED, 28, max_w=4.0).move_to(UP * 0.3)
+            t1 = max(0.3, min(0.7, d * 0.4))
+            self.play(FadeIn(band), FadeIn(nscp), run_time=t1)
+            self.act(d - t1, FadeIn(delay, scale=1.25),
+                     Indicate(self.st["ipo"], color=AMBER, scale_factor=1.05))
+
+        self.beats(info, [a0, a1, a2, None])
+
+    # --- 11: 클라이맥스 — 주가 재현 차트 28→71→74.75→58.25 ---
+    def seg011(self, info):
+        card = RoundedRectangle(corner_radius=0.2, width=6.0, height=6.2)
+        card.set_stroke(WHITE, 4).set_fill(EP04_PAPER, 1).move_to(UP * 1.0)
+        base_y, scale = card.get_bottom()[1] + 0.7, 0.082
+        py = lambda p: base_y + (p - 20) * scale  # noqa: E731
+        xs = {"open": -2.4, "first": -0.9, "peak": 0.7, "close": 2.4}
+        cap = self.repro_tag("주가 (데이터 재구성)")
+
+        def a0(d):
+            ip_line = DashedLine([xs["open"], py(28), 0], [xs["close"] + 0.2, py(28), 0])
+            ip_line.set_stroke("#6B7280", 3)
+            ip_lb = Text("$28", font=MONO, font_size=30, color="#6B7280", weight="BOLD")
+            ip_lb.next_to(ip_line.get_start(), UP, buff=0.12).shift(RIGHT * 0.25)
+            jump = Line([xs["first"], py(28), 0], [xs["first"], py(71), 0])
+            jump.set_stroke(EP04_GREEN, 7)
+            dot71 = Dot([xs["first"], py(71), 0], radius=0.12, color=EP04_GREEN)
+            lb71 = Text("$71", font=MONO, font_size=40, color=EP04_GREEN,
+                        weight="BOLD").next_to(dot71, UL, buff=0.12)
+            self.st["p71"] = [xs["first"], py(71), 0]
+            t1 = max(0.3, min(0.7, d * 0.3))
+            self.play(FadeIn(cap), FadeIn(card), run_time=t1)
+            t2 = max(0.3, min(0.6, d * 0.25))
+            self.play(Create(ip_line), FadeIn(ip_lb), run_time=t2)
+            self.act(d - t1 - t2, Create(jump), FadeIn(dot71, scale=1.4), FadeIn(lb71))
+
+        def a1(d):
+            rise = Line(self.st["p71"], [xs["peak"], py(74.75), 0])
+            rise.set_stroke(EP04_GREEN, 7)
+            dot_pk = Dot([xs["peak"], py(74.75), 0], radius=0.13, color=EP04_RED_PK)
+            lb_pk = Text("$74.75", font=MONO, font_size=34, color=EP04_RED_PK,
+                         weight="BOLD").next_to(dot_pk, UP, buff=0.14)
+            fall = Line([xs["peak"], py(74.75), 0], [xs["close"], py(58.25), 0])
+            fall.set_stroke("#6B7280", 7)
+            dot_cl = Dot([xs["close"], py(58.25), 0], radius=0.12, color=INK)
+            lb_cl = Text("$58.25", font=MONO, font_size=30, color=INK,
+                         weight="BOLD").next_to(dot_cl, DOWN, buff=0.14)
+            t1 = max(0.3, min(0.8, d * 0.35))
+            self.play(Create(rise), FadeIn(dot_pk, scale=1.4), FadeIn(lb_pk), run_time=t1)
+            t2 = min(0.5, max(0.3, d * 0.15))
+            self.play(Flash(dot_pk.get_center(), color=EP04_RED_PK, flash_radius=1.6),
+                      run_time=t2)
+            self.act(d - t1 - t2, Create(fall), FadeIn(dot_cl), FadeIn(lb_cl))
+
+        def a2(d):
+            worth = chip("몸값 — 하루 만에 약 $30억", AMBER, 28, max_w=6.0)
+            worth.move_to(DOWN * 3.3)
+            self.act(d, FadeIn(worth, scale=1.2))
+
+        self.beats(info, [a0, a1, a2])
+
+
+class Short04A(Short04Base):
+    """반전형(~35초): 적자 회사 상장날 — 주문 폭주·2시간 지연·주가 3배."""
+    SPEC = {"segs": [0, 10, 11],
+            "hook": ["$28 → $71", "적자 회사의 상장날"],
+            "pops": {0: [None, "주문 폭주", None],
+                     10: [None, None, "2시간 지연", None],
+                     11: [None, None, "$30억"]}}
+
+
+class Short04B(Short04Base):
+    """요약형(~46초): 시급 $6.85 알바생 → IMG 태그 → 모자이크 → 상장."""
+    SPEC = {"segs": [3, 4, 5, 11],
+            "hook": ["시급 $6.85 알바생이", "웹에 그림을 넣었다"],
+            "pops": {3: [None, "$6.85", None, None, None, None, None],
+                     4: [None, "IMG", None, None],
+                     5: [None, "모자이크", None],
+                     11: ["$71", None, "$30억"]}}
+
+
 def video_seconds(path):
     """mp4 재생 길이(초) 실측 — ffmpeg 표준출력 파싱(추정 금지, rule6)."""
     import imageio_ffmpeg
@@ -1593,7 +1917,8 @@ def build(short_cls, name):
 
 SHORTS = {"01": ((ShortA, "shorts_A"), (ShortB, "shorts_B")),
           "02": ((Short02A, "shorts_A"), (Short02B, "shorts_B")),
-          "03": ((Short03A, "shorts_A"), (Short03B, "shorts_B"))}
+          "03": ((Short03A, "shorts_A"), (Short03B, "shorts_B")),
+          "04": ((Short04A, "shorts_A"), (Short04B, "shorts_B"))}
 
 if __name__ == "__main__":
     if EP not in SHORTS:
