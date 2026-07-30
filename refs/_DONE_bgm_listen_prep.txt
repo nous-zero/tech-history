@@ -1,0 +1,43 @@
+완료 시각: 2026-07-30 (audio-producer)
+과업: 4편 본편 BGM 사용자 청음 발췌 제작 — 발행 체크리스트 9항 입력물 (release-director 지시)
+
+■ 산출물
+  video/output/04_v2/_listen_check_bgm_ep04.mp3
+  842,892바이트 · 35.09초 · 48000Hz 스테레오 · mp3 192kbps
+  발췌 전체 라우드니스 실측: -16.8 LUFS / TP -6.0 dBTP
+
+■ 추출 원본 (지시 2항 준수 — 발행 실물에서 직접 추출)
+  video/output/04_v2/episode.mp4 (19,025,672바이트, 206.46s, 1920x1080 30fps,
+  AAC 48kHz 스테레오)의 오디오 스트림. 원본 트랙·중간 산출물(episode_mix.wav 등)
+  미사용 — "사용자가 들은 소리 = 발행되는 소리" 동일성.
+
+■ 구간표 (발췌 내 위치 ↔ 본편 내 위치)
+  | 발췌 구간      | 본편 구간           | 내용 |
+  |---------------|--------------------|------|
+  | 00.0 ~ 02.8초 | 000.00 ~ 002.84초  | ③ 인트로 카드 — **BGM 단독 노출**(페이드인 3s 중). 발췌 내 실측 -43.0 LUFS = 내레이션 없음 확인 |
+  | 02.8 ~ 10.0초 | 002.84 ~ 010.00초  | ① 내레이션 아래 BGM 대표 구간(도입부) |
+  | 10.0 ~ 12.3초 | 036.00 ~ 038.29초  | ① 내레이션+BGM (중반 대표 구간) |
+  | 12.3 ~ 12.8초 | 038.29 ~ 038.79초  | ② **문장 사이 최장 공백 0.50s — BGM만 남는 순간**(내레이션 트랙 silencedetect 실측 최장 공백) |
+  | 12.8 ~ 20.0초 | 038.79 ~ 046.00초  | ① 내레이션+BGM 계속 |
+  | 20.0 ~ 35.09초| 190.50 ~ 205.55초  | ③ 종반 내레이션 → **BGM 페이드아웃 4s**(믹스 201.5~205.5s) → 종료. 오디오 스트림이 믹스 길이 205.53s에서 끝나 영상 꼬리(206.46s까지 0.93s)는 무음이라 발췌에 미포함 |
+  ※ 구간 이음매에는 0.1초 페이드를 넣어 '툭' 소리(클릭)를 제거했다. 시간표의 본편 위치는 원본 기준 정확값.
+
+■ 추출 명령 (재현 가능)
+  FF="C:\Users\745ra\AppData\Local\Programs\Python\Python312\Lib\site-packages\imageio_ffmpeg\binaries\ffmpeg-win-x86_64-v7.1.exe"
+  "$FF" -y -i video/output/04_v2/episode.mp4 -vn -filter_complex "
+  [0:a]atrim=start=0:end=10,asetpts=PTS-STARTPTS,afade=t=out:st=9.9:d=0.1[a];
+  [0:a]atrim=start=36:end=46,asetpts=PTS-STARTPTS,afade=t=in:st=0:d=0.1,afade=t=out:st=9.9:d=0.1[b];
+  [0:a]atrim=start=190.5:end=206.46,asetpts=PTS-STARTPTS,afade=t=in:st=0:d=0.1[c];
+  [a][b][c]concat=n=3:v=0:a=1[out]" -map "[out]" -c:a libmp3lame -b:a 192k \
+  video/output/04_v2/_listen_check_bgm_ep04.mp3
+
+■ 자체 검수 (rule4 — 만든 것을 다시 쟀다)
+  - 무음 검출(-50dB·0.4s): 0건 → 발췌 전 구간에 소리 실재(인트로·공백 구간에 BGM 있음)
+  - 인트로 단독 구간(발췌 0~2.8s) -43.0 LUFS → 내레이션(-16.1) 없이 BGM만 남는 레벨 확인
+  - 구간 선정 근거: episode_track.wav(내레이션 단독) silencedetect 실측 —
+    인트로 무음 0~2.843s / 중반 최장 공백 38.293~38.794s(0.50s) / 트랙 205.53s
+  - 발췌 파일 재생 확인: ffmpeg 디코드 오류 0건, Duration 35.09s 판독
+
+■ 확인한 것 / 못 한 것
+  확인: 발행 실물에서 추출, 구간별 BGM 실재(기계 계측), 시간표-실측 대조
+  못 한 것: 사람 청음(에이전트 청취 불가) — 이 파일이 바로 그 절차의 입력물이다
