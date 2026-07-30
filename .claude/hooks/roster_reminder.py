@@ -22,6 +22,8 @@ print(
     "예외: 1분 내 잡무. 비용 발생·계정 생성·게시물 삭제·신규 플랫폼 첫 게시는 여전히 사용자 게이트. "
     "발행은 심사 대장(refs/publish-reviews.md) 승인 행 필수(훅 강제, §8 범위는 release-director가 직접 기록). "
     "공정 완료 시 상태판(refs/pipeline-status.md) 갱신. "
-    "컨텍스트 80% 소진 시 인수인계서(메모리 session-handover.md + 저장소 refs/SESSION-HANDOVER.md) 갱신·커밋 후 세션 마무리 — GOVERNANCE §6-2."
+    "컨텍스트 80% 소진 시 인수인계서(메모리 session-handover.md + 저장소 refs/SESSION-HANDOVER.md) 갱신·커밋 후 세션 마무리 — GOVERNANCE §6-2. "
+    "완주 의무(§6-3): 에이전트는 목표 완주 전에 멈추지 않는다 — 보고는 정지 사유가 아니며, 대기는 감시(마커 폴링)로 대체하고, "
+    "정지는 오직 '스스로 해결 불가한 치명 문제 + 사용자 게이트'뿐. 에이전트를 띄우는 모든 지시서에 이 조항을 포함하라."
 )
 sys.exit(0)
