@@ -30,7 +30,7 @@
 | 6 | STT 전수 검수 | audio-producer(별도 세션) | 🔄 | `refs/audio-qc-ep04.md` | 고유명사·숫자 단어별 검수 행 의무 |
 | 6b | **Episode04 클래스 신작(804행)** | video-producer | ✅ | `video/build_v2.py`(커밋 de2c7c6) | 15세그 전수, 금지 소재 0(가공 티커 재현), legal_chip 10건 전건 ≤20자. `--layout-audit` 1차에서 **차단 모드 실전 첫 적발**(아웃트로 커서 잔재)→수리→2차 합격(이탈0·침범0·커버리지16/16·exit 0). 더미 wav 미사용. **잔여: 소재 편입 3사유**(대장 등록 대기·TASL 축약 counsel·초상 counsel) + wav 후 실렌더 |
 | 7 | 본편 1080p 렌더 | video-producer | ⏳ | `video/output/04_v2/episode.mp4` | 약 70분 |
-| 8 | 쇼츠 2종 | video-producer | ⏳ | `video/output/04_v2/shorts_A.mp4`·`shorts_B.mp4` | |
+| 8 | 쇼츠 2종 | video-producer | ⏳ | `video/output/04_v2/shorts_A.mp4`·`shorts_B.mp4` | **주의 2건**: ①IMG-05(Infrogmation) 사용 시 counsel 축약 문구 확정 선행(§16-1형도 22자 초과 — 본편 미사용으로 회부 유예 중) ②쇼츠 BGM은 내레이션 트랙 동반 필수(10항) |
 | 9 | 썸네일 | visual-designer | ✅ | `video/output/04_v2/thumbnail.png`(주안 A)·`thumbnail_alt_b.png` + `refs/ep04-thumbnail-spec.md` | **총감독 육안 검수 통과**(2026-07-30 이미지 직접 열람): 도형 로고 0·실존 얼굴 0·실캡처 0·시장 정지 연출 0, NSCP는 자체 서체, "재현 화면" 표기 실재, 앰버 키워드+폴라로이드 차트(28→71→74.75→58.25)+1995 뱃지 공식 준수. 전량 자체 재현(외부 다운로드 0). A안 주력(구체 소수점 훅 $6.85). 잔여: 실기기 축소 확인·업로드 후 A/B(analyst) |
 | 10 | 메타·SEO | channel-adapter | 🔄(**정정 중**) | `refs/ep04-youtube-meta.md`(사본, 커밋 1655455) + `video/output/04_v2/youtube_meta.txt` | 1차 완료(제목 77자·태그 18건·md5 일치)했으나 **1c 판정으로 제목·설명 첫 문단·쇼츠 B 제목 정정 재가동** — 새 04.json title 기준, 전수 grep + md5 재대조 지시 |
 | 11 | 법무 최종 심사 | copyright-counsel | ⏳ | `refs/legal-review-ep04.md` | |
