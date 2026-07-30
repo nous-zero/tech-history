@@ -28,6 +28,8 @@
 
 | 항목 | 담당 | 상태 |
 |---|---|---|
+| **저장소 공개 범위 결정(A 2분할/B 최소 조치/C 현상 유지)** | security-officer→사용자 | 🚫 **사용자 결정 대기(2026-07-30 보안 점검 보고)**. 어느 안이든 ①analytics private-*.json 공개 중단 ②legal-review-ep03 음성 경위 비식별화 2건은 조치 권고 |
+| **보안 스캔 훅 승격(푸시 전 비밀 패턴 자동 검사)** | security-officer | 🔜 신설 1호 과업 — verify_git_push 체인에 시크릿 스캔 추가, 실사격 검증 후 커밋 |
 | 틱톡·릴스 발행로(Buffer 계정) | publisher | 🚫 사용자 계정 생성 대기 |
 | 네이버·티스토리 반자동(Playwright) | publisher | ⏳ 설계 완료·구축 전(사용자 ToS 리스크 승인 필요) |
 | 유튜브 API 실업로드 검증 | publisher | ⏳ |

@@ -15,7 +15,7 @@ print(
     "[편성 리마인더] 이 저장소는 공정별 에이전트 12팀 체제(.claude/agents/, 헌법 GOVERNANCE.md). "
     "대화가 공정(기획 planner-writer/각색 channel-adapter/디자인 visual-designer/영상 video-producer/"
     "음성 audio-producer/소재조달 asset-scout/소재제작 asset-creator/저작권 copyright-counsel/"
-    "신기술 tech-scout/발행 publisher/분석 marketing-analyst/감사 auditor)에 해당하면 "
+    "신기술 tech-scout/발행 publisher/분석 marketing-analyst/감사 auditor/보안 security-officer)에 해당하면 "
     "본선이 직접 처리하지 말고 해당 에이전트를 자동 호출하고, 산출물이 다음 공정을 부르면 연쇄 호출하라. "
     "유튜브 릴리스 종단(최종 검토→보완→업로드)은 발행 총감독 release-director 관할 — GOVERNANCE §8 상시 승인으로 "
     "품질 게이트 전 항목 통과 시 사용자 결재 없이 자동 발행(문제 시에만 사용자 호출). "
