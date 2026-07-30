@@ -3005,12 +3005,20 @@ class Episode04(Episode03):
         else:
             lines.append("- 없음 — 전 실사 슬롯 충족")
         lines += ["",
-                  "[소재 도착 시 함께 처리할 것 — 코드 수정 필요 항목]",
-                  "- ep04_jim_clark: 촬영 연도 캡션(legal_chip, 예: 「클라크 (2000년대 촬영)」)을",
-                  "  seg07 에 추가할 것 — counsel §5-6 시대 표기 의무. 연도는 파일 대장에서 실측.",
-                  "- ep04_ms_campus: seg13 은 실루엣 연출이 기본, 사진 도착 시 find_asset 분기가 자동 사용.",
-                  "- seg06 웹 성장·seg12 나스닥 지수: 수치 미조달로 숫자 없는 연출로 처리했다.",
-                  "  scout 가 독립 출처 수치를 가져오면 데이터 차트로 업그레이드 가능(선택)."]
+                  "[편입 결정 기록 — 2026-07-30 §16 이후 (배제는 전부 판정 근거 있음)]",
+                  "- seg3: IMG-21(quad_pano, TASL 「Schwen, CC BY-SA」)+IMG-19(Altgeld, PD) 편입.",
+                  "  IMG-03 배제(§16-2 조건⑥ NCSA 지칭 금지 ↔ seg3=NCSA 지칭 구간),",
+                  "  IMG-23 배제(§16 판정 3건에 미포함 = 초상 미판정 — 판정 시 편입 가능).",
+                  "- seg7: IMG-13(SGI, CC0) 주 비주얼 + IMG-09(클라크) 저해상 인셋(대장 조건).",
+                  "  §16 확정 캡션 「Knnkanda, CC BY-SA」+「클라크 (연대 미상)」 동시 노출.",
+                  "- seg13: MS 건물 사진(IMG-14~16)은 2015~16 촬영 = 1995 장면 직배치 금지(대장",
+                  "  조건) → 실루엣 연출이 최종이다. find_asset('ep04_ms_campus') 분기는 해당",
+                  "  파일명이 없어 영구 미발동(의도).",
+                  "- seg0/10: 재현 시세판이 주력(counsel §4·썸네일 문법 일치). IMG-17/18 실사는",
+                  "  '나스닥 오인 결합 금지'(§16-2 조건⑥) 탓에 나스닥 지칭 구간인 이 세그들에",
+                  "  넣지 않는다 — 시대 공기 B롤이 필요해지면 별도 회부.",
+                  "- seg06 웹 성장·seg12 지수: EP04-DAT-01/03 수치 도착 — 차트 업그레이드는",
+                  "  선택 과업으로 남김(현행 정성 연출도 판정 통과 상태)."]
         with open(path, "w", encoding="utf-8") as f:
             f.write("\n".join(lines))
         print(f"[v2] 소재 대기 {len(self.PLACEHOLDERS_USED)}건 → {os.path.basename(path)}")
@@ -3191,31 +3199,56 @@ class Episode04(Episode03):
         self.run_beats(S, [a0, a1, a2])
 
     # --- 3: NCSA 알바생 — 시급 $6.85 (실사 + 각색 대화) ---
+    # 소재 선정 기록(2026-07-30 §16 편입): 전산실 실사 후보 2건을 **배제**하고 캠퍼스
+    # 건물 2컷으로 간다 — IMG-03(전산실 군중)은 §16-2 조건⑥ "NCSA·일리노이 지칭 동기화
+    # 금지"가 이 세그(NCSA 지칭 구간)와 정면 충돌, IMG-23(1995 전산실)은 §16 판정
+    # 3건(03·04·18)에 포함되지 않아 초상 미판정. 판정 없는 소재는 넣지 않는다(rule6).
     def seg03(self, S):
         def a0(d):
             place = chip("일리노이대 — NCSA", INK, 26).to_corner(UL, buff=0.5)
-            ph, _ = self.ep_photo("uiuc_campus", height=4.6, pos=DOWN * 0.1)
-            self.st["campus"] = ph
+            # EP04-IMG-21 (CC BY-SA 4.0, Daniel Schwen). 대장 표기 "TASL 20자"는 오계수
+            # (`Daniel Schwen, CC BY-SA 4.0` = 27자) — §16-1 축약 일반형 「<성>, CC <종류>」
+            # 적용 = 16자. 전체 TASL 은 설명란 전문(§16-1 유효 조건, channel-adapter 관할).
+            # ep_photo 2번째 반환값 = "자리표시자인가"(True=소재 없음). 실물일 때만
+            # TASL 캡션을 단다. (r4 사고: 이 값을 real 로 잘못 읽어 논리가 뒤집혀
+            # 사진은 들어가고 §16 캡션만 빠진 채 감사를 통과했다 — 캡션이 아예 안
+            # 만들어지면 지속 검사의 대상조차 안 된다. 매니페스트 캡션 계수 대조로 적발.)
+            ph, is_ph = self.ep_photo("uiuc_quad_pano", height=3.9, pos=DOWN * 0.3)
+            shot = ph
+            if not is_ph:
+                # 파노라마 우하단 '안쪽' 워터마크 배치 — 사진 완전 포함 = 사진 구역
+                # 통과·자막 대역 진입 0 (r5 실측: 사진 아래 배치는 켄 번즈 확대분이
+                # 자막 대역을 0.18 물었다).
+                cap = legal_chip("Schwen, CC BY-SA", GRAY, 18)
+                cap.move_to(ph.get_corner(DR)
+                            + LEFT * (cap.width / 2 + 0.35) + UP * (cap.height / 2 + 0.3))
+                shot = Group(ph, cap)
+            self.st["campus"] = shot
             self.play(FadeIn(place, shift=DOWN * 0.2), run_time=0.3)
             t1 = max(0.3, min(0.7, d * 0.3))
-            self.show_photo(ph, t1)
-            self.ken_burns(ph, d - t1 - 0.3, zoom=1.05)
+            self.show_photo(shot, t1)
+            self.ken_burns(shot, d - t1 - 0.3, zoom=1.04)
 
         def a1(d):
-            lab, _ = self.ep_photo("computer_lab_90s", height=4.6, pos=DOWN * 0.1)
-            t1 = max(0.3, min(0.8, d * 0.4))
-            self.play(FadeOut(self.st.pop("campus")), run_time=0.25)
-            self.show_photo(lab, t1)
-            self.st["lab"] = lab
-            self.ken_burns(lab, d - t1 - 0.25, zoom=1.05)
-
-        def a2(d):
+            # 문장 2 = "시간당 6달러 85센트짜리 알바" → 시급 카드가 이 문장의 비주얼이다.
+            # 겸사겸사 캠퍼스(TASL 캡션 포함)가 2문장을 살아 캡션 지속 여유가 두 배가 된다
+            # (r6 실측 4.54초는 통과였지만 실음성이 추정보다 짧아지는 3편 경향 대비).
             wage = VGroup(mtext("$6.85", fs=64, color=AMBER),
                           ktext("시간당 — 실제 기록", 24, GRAY))
             wage.arrange(DOWN, buff=0.18).move_to(RIGHT * 4.9 + UP * 2.4)
             self.fit_frame(wage)
             self.claim_all_photos(wage)   # 사진 테두리에 걸칠 수 있는 의도 배치 — 신고
             self.act(d, FadeIn(wage, scale=1.3))
+
+        def a2(d):
+            # 문장 3(동료 대화 도입)에서 캠퍼스 → Altgeld Hall 전환.
+            # EP04-IMG-19 (PD, Daderot — 1897 준공 = 시대 중립, 표기 불요)
+            lab, _ = self.ep_photo("uiuc_altgeld_hall", height=4.4, pos=DOWN * 0.1)
+            t1 = max(0.3, min(0.8, d * 0.4))
+            self.play(FadeOut(self.st.pop("campus")), run_time=0.25)
+            self.show_photo(lab, t1)
+            self.st["lab"] = lab
+            self.ken_burns(lab, d - t1 - 0.25, zoom=1.05)
 
         def a3(d):
             b1 = self.speech_bubble(["연구 문서인데,", "글자면 충분하잖아"],
@@ -3232,7 +3265,10 @@ class Episode04(Episode03):
                      self.st["b1"][0].animate.set_stroke(opacity=0.4))
 
         def a5(d):
-            note = chip("대화는 각색 — 시급은 실제", GRAY, 22).move_to(DOWN * 2.55)
+            # 좌하단 — Altgeld 사진(x ±1.65, 켄 번즈 확대 포함)의 하단 테두리를 피한다
+            # (r3 감사 실측 3.57×0.27 침범의 수리. 자막 대역 −3.10 위는 유지).
+            note = chip("대화는 각색 — 시급은 실제", GRAY, 22)
+            note.move_to(LEFT * 4.2 + DOWN * 2.55)
             self.act(d, FadeIn(note, shift=UP * 0.15))
 
         self.run_beats(S, [a0, a1, a2, a3, a4, a5])
@@ -3363,17 +3399,22 @@ class Episode04(Episode03):
         self.run_beats(S, [a0, a1, a2, a3])
 
     # --- 7: 1994-02 짐 클라크의 편지 (실사 + 인용 1문장) ---
+    # 소재 선정 기록(§16 편입): 주 비주얼 = SGI 워크스테이션(IMG-13, CC0·안전 —
+    # 클라크의 회사를 하드웨어로 말한다, 로고 클로즈업 없음). 클라크 본인 사진(IMG-09)은
+    # 500×465 저해상이라 대장 조건 "인서트/폴라로이드용 한정" → 작은 인셋으로만 얹고,
+    # §16 확정 캡션 2종(TASL 18자 + 연대 미상 11자)을 동시 노출한다.
     def seg07(self, S):
         def a0(d):
             date = chip("1994. 2", RED, 26).to_corner(UL, buff=0.5)
             env = self.envelope_icon(2.0, 1.3).move_to(LEFT * 4.6 + UP * 2.3)
-            ph, _ = self.ep_photo("jim_clark", height=4.0, pos=RIGHT * 3.6 + UP * 0.4)
-            self.st["clark"] = ph
+            ph, _ = self.ep_photo("sgi_indigo_crt_irix", height=3.6,
+                                  pos=RIGHT * 3.4 + UP * 1.3)
+            self.st["sgi"] = ph
             self.play(FadeIn(date, shift=DOWN * 0.2), run_time=0.3)
             t1 = max(0.3, min(0.7, d * 0.3))
             self.play(FadeIn(env, scale=1.2), run_time=0.35)
             self.show_photo(ph, t1)
-            self.ken_burns(ph, d - t1 - 0.65, zoom=1.05)
+            self.ken_burns(ph, d - t1 - 0.65, zoom=1.04)
 
         def a1(d):
             # 첫 문장 인용 — counsel §4 seg7 "가"(짧은 사실 문구, 대본이 출처 명시)
@@ -3390,9 +3431,29 @@ class Episode04(Episode03):
             self.hold(d - t1 - t2)
 
         def a2(d):
-            name = chip("짐 클라크 — SGI 창업자", INK, 24)
-            name.next_to(self.st["clark"], DOWN, buff=0.26)
-            self.act(d, FadeIn(name, shift=UP * 0.15))
+            # 클라크 인셋(EP04-IMG-09) — §16 확정 캡션 그대로. SGI 사진 테두리에 걸치는
+            # 폴라로이드 문법이므로 claim_all_photos 로 신고한다(4편 차단 모드).
+            ph, is_ph = self.ep_photo("jim_clark_2013", height=2.0,
+                                      pos=RIGHT * 4.7 + DOWN * 1.35)
+            shot = ph
+            if not is_ph:   # 실물일 때만 §16 확정 캡션 2종(위 seg03 주석의 사고 수리)
+                era = legal_chip("클라크 (연대 미상)", GRAY, 16)
+                era.next_to(ph, UP, buff=0.16)
+                # TASL 은 사진 왼쪽 — 아래 배치는 자막 대역을 0.10 물었다(r5 실측)
+                tasl = legal_chip("Knnkanda, CC BY-SA", GRAY, 16)
+                tasl.next_to(ph, LEFT, buff=0.2)
+                shot = Group(ph, era, tasl)
+            self.claim_all_photos(shot)
+            # SGI 사진도 신고 — 인셋과 상호 걸침(폴라로이드 문법)이라 양방향 다 의도다
+            # (r3 감사 실측: SGI 켄 번즈 확대분이 인셋 구역을 1.79×0.32 물었다).
+            self.claim_all_photos(self.st["sgi"])
+            # 이름 칩은 사진(x≥1.57)을 피해서 — r3 실측 0.69×0.54 침범의 수리
+            name = chip("짐 클라크 — SGI 창업자", INK, 24).move_to(LEFT * 1.0 + UP * 3.05)
+            t1 = max(0.3, min(0.7, d * 0.35))
+            self.show_photo(shot, t1)
+            t2 = max(0.3, min(0.5, d * 0.2))
+            self.play(FadeIn(name, shift=DOWN * 0.15), run_time=t2)
+            self.hold(d - t1 - t2)
 
         def a3(d):
             self.act(d, Indicate(self.st["quote"], color=BLUE, scale_factor=1.03))
