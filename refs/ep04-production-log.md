@@ -54,6 +54,8 @@
 - (2026-07-30 6대 실측) **`video/output/`은 통째로 `.gitignore` 대상**(`git ls-files video/output/03_v2/` = 0건). 즉 **영상·음성·메타 산출물은 저장소에 남지 않는다** — 세션이 바뀌어도 파일은 로컬 디스크에 남지만, 다른 PC·클라우드 세션은 인수 불가. 인수의 근거는 이 로그 + 로컬 파일 실측이다.
 - (2026-07-30 6대 실측) **에피소드마다 Manim 클래스를 손으로 쓴다** — `build_v2.py:640 Episode01`(552행) / `1193 Episode02`(613행) / `1807 Episode03`(860행), 등록부는 `build_v2.py:2668 episodes = {"01":…,"02":…,"03":…}`. 따라서 **4편은 `Episode04` 클래스 신규 작성(약 800행)이 최대 작업 덩어리**이며, 이것이 렌더 전 최장 공정이다.
 - (2026-07-30 6대 실측) **애니메이션 타이밍은 음성 wav 길이에서 나온다**(`build_v2.py:133 load_timed_segments` → `video/output/04_v2/audio/segNNN.wav`를 읽어 `TIMED` 구성). 그래서 **음성이 없으면 Episode04를 실렌더로 검증할 수 없다** → 임계 경로는 `대본 → 캐글 음성 → Episode04 작성 → 렌더`. 소재 조달·썸네일·메타는 이 경로와 병렬 가능.
+- (2026-07-30 6대 실측 — 선행⑤ 근거 재검증) **채널 재생목록: 커스텀 0개(단, 총계 2 미해명)**. `playlists.list`를 `mine:true`와 `channelId` 두 경로로 각각 조회한 결과 **둘 다 `items: []`이면서 `pageInfo.totalResults: 2`**. 즉 "3편까지 재생목록 0개"라는 감사 지적은 **표시 가능한 커스텀 재생목록 기준으로는 유지**되지만, 총계 2의 정체는 **미확인**(시스템/자동생성 재생목록 추정 — 확인 필요, 추정으로 처리 금지). 조회 도구: `C:\Users\745ra\.claude\skills\youtube-uploader\scripts\list-playlists.js`(신설, 읽기 전용)
+- (2026-07-30 6대 실측) 채널 `UCFDEkjffWuo6CxeOCThTjRA` nous-zero — 구독 4 · 조회 3,220 · **`statistics.videoCount`는 8인데 업로드 재생목록 실계수는 9**(1~3편 본편 3 + 쇼츠 6, 전부 public). 통계 지연/집계 제외 추정이나 **원인 미확인**. 도구: `list-uploads.js`(신설, 읽기 전용)
 - (2026-07-30 6대 실측) 업로드 도구는 저장소 밖에 있다: `C:\Users\745ra\.claude\skills\youtube-uploader\scripts\`(`upload-ep03.js`·`publish-ep03.js`·`verify-ep03.js`·`check-links.js`·`fetch-published.js` + OAuth 토큰). 4편은 이 스크립트들을 ep04용으로 복제해 쓴다.
 
 ## 4. 환경 실측치 (반복 사고 방지 — 재확인 불요)
