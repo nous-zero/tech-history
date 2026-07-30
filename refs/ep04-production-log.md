@@ -22,8 +22,8 @@
 | 1 | 영상 대본 04.json | planner-writer | ✅ | `video/scripts/04.json` | 15세그먼트·예상 낭독 195.4초(03편 wav 실측 환산). 커밋 87a25f8·93ab331. 마커 `video/scripts/_DONE_ep04_script.txt` |
 | 1b | 소재 요구서 | planner-writer | ✅ | `refs/ep04-asset-brief.md` | 커밋 44526f8 |
 | 2 | 소재 조달·대장 등록 | asset-scout | 🚫 | `video/output/assets/ep04_*` + `refs/asset-ledger.md` | **법무 선행 판정(#4) 대기 — 착수 금지**. seg5 모자이크 화면·seg4 아이엠지 메일 원문은 판정 전 다운로드 금지 |
-| 3 | BGM 조달(선행①) | audio-producer | 🔄 | `video/output/assets/bgm/` | `pixabay-568180-corporate-explainer-video.mp3` 조달됨. 대장 등록·믹싱 반영·볼륨 실측 남음 |
-| 4 | 법무 **선행** 판정(소재·BGM) | copyright-counsel | 🔄 | `refs/legal-review-ep04.md` | **임계 게이트** — #2를 막고 있음 |
+| 3 | BGM 조달·믹싱(선행①) | audio-producer | ✅(법무 ⚠️) | `video/output/assets/bgm/` + `video/bgm.py` | 커밋 00438f3·0f638a7·d28eca0. **대장 등급 ⚠️ counsel 판정 대기 — 발행 게이트에 물림**. 별도로 **사용자 BGM 청음 1회** 필요(아래 5절) |
+| 4 | 법무 **선행** 판정(소재·BGM) | copyright-counsel | 🔄 | `refs/legal-review-ep04.md` | **임계 게이트** — #2와 BGM 발행 게이트를 동시에 막고 있음 |
 | 5 | 캐글 음성 생산 | audio-producer(별도 세션) | 🔄 | `video/output/04_v2/audio/seg000~014.wav` | **임계 경로** |
 | 6 | STT 전수 검수 | audio-producer(별도 세션) | 🔄 | `refs/audio-qc-ep04.md` | 고유명사·숫자 단어별 검수 행 의무 |
 | 6b | **Episode04 클래스 신작(약 800행)** | video-producer | ⏳ | `video/build_v2.py` + 등록부 2668행 | 음성 확보 후 착수(타이밍이 wav 길이 파생) |
@@ -42,7 +42,7 @@
 
 | # | 과업 | 담당 | 상태 |
 |---|---|---|---|
-| ① | 본편 BGM 도입(4편부터 필수) | audio-producer→counsel | ⏳ |
+| ① | 본편 BGM 도입(4편부터 필수) | audio-producer→counsel | ✅ 집행 완료(법무 ⚠️ 잔여) — 아래 3절 실측 참조 |
 | ② | 법무 캡션 20자 상한을 조립기 문법에 강제 | video-producer | ⏳ |
 | ③ | 전 구간 보호영역 등록(현재 애니메이션 0~140 구간 등록 구역 0개) | video-producer | ⏳ |
 | ④ | 쇼츠에 보호영역 이식(`build_shorts.py`에 기능 자체 없음) | video-producer | ⏳ |
@@ -74,6 +74,28 @@
 - (2026-07-30 6대) **GOVERNANCE §9(컨텍스트 예산) 첫 적용 대상**. 총감독은 이 시점부터 **실행자가 아니라 지휘자**다 — 브라우저 조종·긴 로그 판독·대용량 통독을 직접 하지 않고 하위 에이전트에 위임해 요약만 받는다. 본선 실측: 역대 총감독 전사는 크래시 0건, 전부 컨텍스트 상한까지 태운 뒤의 정상 종료였고 그 누적의 73%가 브라우저 도구 결과였다. **주의: `PreToolUse` 유입 게이트는 설정 재적재 전까지 미발동** — 기계가 막아주지 않으므로 규율로 지킨다(`read_page`는 `max_chars`≤12000 + `filter=interactive`/`ref_id` 명시, 큰 파일은 Grep·offset/limit).
 - (2026-07-30 6대) **4편은 1~3편과 저작권 지형이 다르다**(planner-writer 경고). Mosaic UI·Netscape 로고·IE 화면·모질라 마스코트·나스닥 로고가 전부 살아있는 민간 저작물·상표(위험 🔴). 1~3편은 정부·공공연구기관 사료라 퍼블릭도메인이 많았다. 처방: **주가·점유율 재현 차트를 주력 화면으로**(seg11이 시각적 클라이맥스, 저작권 0). **소재 조달은 법무 선행 판정 뒤로 차단**했고 seg5 모자이크 화면·seg4 아이엠지 메일 원문은 판정 전 다운로드 금지로 못 박았다.
 - (2026-07-30 6대 실측) 업로드 도구는 저장소 밖에 있다: `C:\Users\745ra\.claude\skills\youtube-uploader\scripts\`(`upload-ep03.js`·`publish-ep03.js`·`verify-ep03.js`·`check-links.js`·`fetch-published.js` + OAuth 토큰). 4편은 이 스크립트들을 ep04용으로 복제해 쓴다.
+
+## 3-2. 선행① BGM 집행 결과 (2026-07-30, audio-producer 보고 — 총감독 인수)
+
+- 음원 **Pixabay #568180 "Corporate Explainer Video"** 209.52초·48kHz. 핵심 근거는 "Pixabay니까 안전"이 아니라 **트랙 단위 실측**: 346곡을 수집해 `hasYoutubeContentId` 필드를 트랙별로 재고 **false인 것만** 채택.
+- 코드: 로직을 **`video/bgm.py`로 분리**하고 `build_v2.py`에는 호출 3곳만. video-producer와 동시 편집 중이라 **부분 스테이징으로 자기 30줄만 커밋**(상대 미커밋 변경 보존).
+- 볼륨 실측(3편 트랙으로 종단 시험): 내레이션 -16.1 LUFS / BGM -35.1 → **차 19.0 LU**(기준 -18~-22 통과). 믹스 -16.1 LUFS · TP -4.7 dBTP. `verify_output_spec --file` **PASS(미달 0·경고 0)**. 시험 잔재는 03_v2에서 전량 삭제(3편 발행본에는 BGM 없음 — 게시본과 로컬 파일의 불일치 방지).
+- 그 과정에서 실제로 잡은 결함: **모노를 스테레오로 복제하면 측정 라우드니스가 +3dB 올라 규격을 벗어난다** → 채널당 -3.01dB 보정으로 복귀. 부수 소득으로 샘플레이트·채널 축 경고가 통과로 전환.
+- ACE-Step 미채택(가중치 8.28GB·노트북 0건 실측) → tech-scout 이월. **5편부터 자체 생성이 되면 Content ID 리스크가 원천 소멸**한다.
+- **남은 것 2개**: ①counsel 판정(쟁점 A Standalone 재배포 금지의 사정거리 / 쟁점 B Content ID 정책 승격) — 회부 완료 ②**사용자 BGM 청음**(곡 분위기 적합성은 메타데이터로만 판단됨 — 사람 귀 미검증).
+
+## 3-3. 발행 전 체크리스트 4편 증보분
+
+기존 8항목(release-director 지시서)에 더해 4편부터 아래를 통과해야 §8 자동 집행이 성립한다.
+
+9. **BGM 청음 확인** — 사용자 1회. 곡 분위기가 편의 톤과 맞는지는 기계가 판정할 수 없다(메타데이터로만 고른 상태). 3편 음성 청음과 동일 절차: 렌더 후 짧은 발췌를 만들어 본선 경유로 사용자에게 묻는다. **미확인 상태의 발행은 §8 범위 밖**(품질 의심 잔존 = "큰 문제" 후보).
+10. **BGM 라이선스 판정 확정** — `refs/asset-ledger.md`의 BGM 행 등급이 ⚠️(판정 대기)인 동안은 발행 불가.
+
+## 3-4. 하위 에이전트 운용 규율 (2026-07-30 실측 — §9-3의 두 번째 구멍)
+
+**자식 에이전트에서 총감독으로 보내는 SendMessage 경로가 없다**(실측: BGM 팀 완료 보고가 총감독에 닿지 못하고 본선으로 감). 따라서 하위를 띄울 때 지시서에 다음을 반드시 명시한다:
+- **결과를 마커 파일에 요약까지 써 넣을 것**(보고서 위치만 남기지 말고 판정·수치 요약을 마커 안에). 총감독은 파일로 인수한다.
+- 보고는 본선 경유. 총감독에게 직접 말이 닿는다고 가정하지 말 것.
 
 ## 4. 환경 실측치 (반복 사고 방지 — 재확인 불요)
 
