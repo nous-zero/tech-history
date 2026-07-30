@@ -21,16 +21,17 @@
 |---|---|---|---|---|---|
 | 1 | 영상 대본 04.json | planner-writer | ✅ | `video/scripts/04.json` | 15세그먼트·예상 낭독 195.4초(03편 wav 실측 환산). 커밋 87a25f8·93ab331. 마커 `video/scripts/_DONE_ep04_script.txt` |
 | 1b | 소재 요구서 | planner-writer | ✅ | `refs/ep04-asset-brief.md` | 커밋 44526f8 |
-| 2 | 소재 조달·대장 등록 | asset-scout | 🚫 | `video/output/assets/ep04_*` + `refs/asset-ledger.md` | **법무 선행 판정(#4) 대기 — 착수 금지**. seg5 모자이크 화면·seg4 아이엠지 메일 원문은 판정 전 다운로드 금지 |
+| 1c | **사실 재검증: "나스닥 두 시간 멈췄다"** | planner-writer | 🔄 | `refs/ep04-fact-check-nasdaq.md` | **시장 전체 정지 vs NSCP 한 종목 개장 지연** — 오류 확정 시 04.json title·seg0·메타 제목·썸네일 4자 동시 정정(부분 수정 금지). **캐글 Run All은 판정 마커 `refs/_DONE_factcheck_nasdaq.txt` 생성 전 보류** 지시함 |
+| 2 | 소재 조달·대장 등록 | asset-scout | 🔄 | `video/output/assets/ep04_*` + `refs/asset-ledger.md` | **게이트 해제**(법무 판정 404dcd8). 착수 순서: ⓪BGM Wayback 스냅샷 2건(시급 — 후행 불가) → ①9부류 조달. 금지 9건·조건부 6건은 판정서 §1~3 |
 | 3 | BGM 조달·믹싱(선행①) | audio-producer | ✅(법무 ⚠️) | `video/output/assets/bgm/` + `video/bgm.py` | 커밋 00438f3·0f638a7·d28eca0. **대장 등급 ⚠️ counsel 판정 대기 — 발행 게이트에 물림**. 별도로 **사용자 BGM 청음 1회** 필요(아래 5절) |
-| 4 | 법무 **선행** 판정(소재·BGM) | copyright-counsel | 🔄 | `refs/legal-review-ep04.md` | **임계 게이트** — #2와 BGM 발행 게이트를 동시에 막고 있음 |
-| 5 | 캐글 음성 생산 | audio-producer(별도 세션) | 🔄 | `video/output/04_v2/audio/seg000~014.wav` | **임계 경로** |
+| 4 | 법무 **선행** 판정(소재·BGM) | copyright-counsel | ✅(+추가 3건 🔄) | `refs/legal-review-ep04.md` | 커밋 404dcd8·89e519e. 3단: 즉시 9부류/조건부 6/금지 9. 로고-이름 분리(도형 금지·서체 표기 가). BGM 조건부 가(발행 직전 Content ID 재실측 + Wayback 증빙 + 쇼츠 내레이션 동반). **추가 회부 3건 진행 중**: AI 라디오 재판정·크레딧 슬롯·쇼츠 축약 크레딧 |
+| 5 | 캐글 음성 생산 | audio-producer(별도 세션) | 🔄(**Run All 보류**) | `video/output/04_v2/audio/seg000~014.wav` | **임계 경로**. 사실 판정(1c) 마커 생성 후 04.json 재Read → 실행. 준비 작업(목소리 설정 재현·검수 틀)은 계속 |
 | 6 | STT 전수 검수 | audio-producer(별도 세션) | 🔄 | `refs/audio-qc-ep04.md` | 고유명사·숫자 단어별 검수 행 의무 |
 | 6b | **Episode04 클래스 신작(약 800행)** | video-producer | ⏳ | `video/build_v2.py` + 등록부 2668행 | 음성 확보 후 착수(타이밍이 wav 길이 파생) |
 | 7 | 본편 1080p 렌더 | video-producer | ⏳ | `video/output/04_v2/episode.mp4` | 약 70분 |
 | 8 | 쇼츠 2종 | video-producer | ⏳ | `video/output/04_v2/shorts_A.mp4`·`shorts_B.mp4` | |
-| 9 | 썸네일 | visual-designer | ⏳ | `video/output/04_v2/thumb*` | |
-| 10 | 메타·SEO | channel-adapter | ⏳ | `video/output/04_v2/youtube_meta.txt` | |
+| 9 | 썸네일 | visual-designer | 🔄 | `video/output/04_v2/thumb*` + `refs/ep04-thumbnail-spec.md` | 제목 확정으로 해금. 금지: 도형 로고·실존 얼굴·Mosaic 실캡처. **"두 시간" 문구는 사실 판정(1c) 전 확정 금지** — 두 벌 제작 후 판정 결과로 선택 |
+| 10 | 메타·SEO | channel-adapter | ✅ | `refs/ep04-youtube-meta.md`(사본, 커밋 1655455) + `video/output/04_v2/youtube_meta.txt` | 제목 77자 확정(원본·사본 md5 일치 실측). 태그 18건. 자리표시자 `[[...PENDING...]]` 규율 준수. **주의: 제목의 "두 시간"은 1c 판정에 따라 정정 가능성** |
 | 11 | 법무 최종 심사 | copyright-counsel | ⏳ | `refs/legal-review-ep04.md` | |
 | 12 | 스펙 실측 | 총감독 | ⏳ | `video/verify_output_spec.py 04` | |
 | 13 | 발행 전 감사 | auditor | ⏳ | `refs/audit-reports/` | |
@@ -61,7 +62,10 @@
 | video-producer | 선행②③④ 조립기 안전장치 | `a6b228c9dc4be20fe` | 🔄 |
 | copyright-counsel | 4편 소재 **선행 법무 판정** | `a541df49978cf920f` | 🔄 |
 | audio-producer #2 | 캐글 음성 생산 + STT 전수 검수 | `a6333c78931694396` | 🔄 |
-| channel-adapter | 유튜브 메타·SEO 원고(제목 확정 → 썸네일 해금) | `a0c8df4598e1cbfb1` | 🔄 |
+| channel-adapter | 유튜브 메타·SEO 원고(제목 확정 → 썸네일 해금) | `a0c8df4598e1cbfb1` | ✅ 완료 |
+| planner-writer(재가동) | 사실 재검증: 나스닥 2시간 쟁점 | `ae78b58dcaf053a63` | 🔄 |
+| asset-scout | BGM Wayback 스냅샷(시급) + 소재 조달 | `af5bd9def977d2dd6` | 🔄 |
+| visual-designer | 썸네일 주안+alt | `a82e140a278b5d2ae` | 🔄 |
 | marketing-analyst 하위 #1 | 브라우저 댓글 census + 채널 홈 레이아웃 실측 | `ac04fcbb5a20482f2` | 🔄 |
 | marketing-analyst 하위 #2 | force-ssl 스코프·커뮤니티 탭 요건·재생목록 SEO 리서치 | `a0db61574764c6239` | 🔄 |
 
