@@ -62,4 +62,15 @@
 
 **ACE-Step(1순위)을 쓰지 않은 소요 실측**: ①저장소에 ACE-Step 코랩 노트북 **0건**(`grep -rn "ACE-Step\|ace_step"` — 문서 언급만 있고 실행 자산 없음) → 노트북 신규 작성·디버깅 필요 ②모델 가중치 **8.28GB**(HuggingFace API `ACE-Step/ACE-Step-v1-3.5B?blobs=true`, 14파일 합계 실측) → 코랩 설치·다운로드만 수십 분 + 무료 GPU 할당 불확실. 총감독 지시("이 경로가 시간을 크게 잡아먹으면 2순위 Pixabay로 즉시 전환하라 — 4편 발행이 우선")에 따라 전환. **ACE-Step 자체는 폐기가 아니라 이월**(tech-scout 파일럿 과업으로 유지 — 성공 시 5편부터 Content ID 리스크 자체가 사라진다).
 
+## 4편 (Mosaic·Netscape) — 이미지·영상
+
+**조달 표준(2026-07-30 release-director 지시)**: 대장 등록 시 ①실제 저장 파일명(`ep04_*`) ②**md5** ③출처 URL을 한 행에 같이 기재한다(파일명이 바뀌어도 md5로 대조 생존). 법무 범위: `refs/legal-review-ep04.md` §0·§4 판정표가 조달의 법이다.
+
+| ID | 파일/트랙 | 유형 | 출처 URL | 라이선스(근거) | 등급 | 확인일 | 증빙 | 인물 | 사용처 |
+|---|---|---|---|---|---|---|---|---|---|
+| EP04-REU-01 | `ep03_first_website.png` (1865×933, md5 `38125a046f244e3128dfad5ccdedf47e`) | 재사용(EP03-IMG-08) | https://commons.wikimedia.org/wiki/File:The_World_Wide_Web_project.png | 3편 행 승계(PD-text 태그) | ⚠️(counsel §4-1 조건부 가 — **"재현 화면" 표기 승계 필수**, 캡션 `최초의 웹사이트 (재현 화면)` 16자·3.5초 규칙) | 2026-07-30 | 파일 실재·md5 실측(2026-07-30). 신규 다운로드 없음 | 없음 | seg1 recap_free_web |
+| EP04-REU-02 | `ep03_free_release_p1.jpg` / `ep03_free_release_p2.jpg` (각 2482×3508, md5 `e1551ce055f2033674eefc8cac0bfc70` / `e6fb0ced9b81d718f8861e57f1b3c97c`) | 재사용(EP03-IMG-09) | https://cds.cern.ch/record/1164399 | 3편 행 승계(© CERN 약관) | ⚠️(counsel §4-1 조건부 가 — **© CERN 크레딧을 4편 설명란에도 재기재**(쟁점A 조건① "모든 사용 편") + 화면 캡션 `© CERN` + 광고·굿즈 전용 금지 + 원본 파일 공개 저장소 커밋 금지) | 2026-07-30 | 파일 실재·md5 실측(2026-07-30). 신규 다운로드 없음 | 서명만(초상 없음) | seg1 recap_free_web |
+
+**재현 대상 목록(조달하지 않음 — asset-creator/video-producer 발주, counsel §6 재현 지침·캡션 규격 적용)**: ①seg0/10 시세판(로고 없음, `시세판 (재현 화면)`) ②seg2 초록 텍스트 터미널 ③seg4 IMG 제안 메일(영문 인용 1문장 이내, 원문 페이지 열람·다운로드 금지) ④seg5 모자이크 재현(원본 스크린샷을 열어 놓고 그리는 것 금지 — §6-1 작업 기준선) ⑤seg6·9·11·12 데이터 차트(수치는 EP04-DAT 행 참조) ⑥seg3 급여 자막 그래픽("시간당 6달러 85센트") ⑦seg8 빈 편집기+`코드명: 모질라` 자막 ⑧seg13 실루엣+자막 ⑨seg14 아웃트로 카드. **금지 재확인(다운로드도 금지)**: Mosaic·Netscape·IE 실화면, 로고 이미지 일체, Mozilla 공룡, Nasdaq 로고/MarketSite, 1995 신문·잡지, AP/Getty, AI 실존 인물 얼굴.
+
 > 3편 미확보·배제: ①**NCSA Mosaic 스크린샷**(scene 14, 4편 재사용 예정) — Commons "NCSA_Mosaic_Browser_Screenshot.png"는 CC0 태그이나 업로더(스크린샷 촬영자)는 자기 권리만 포기 가능하고 화면 속 Mosaic UI 저작권(일리노이대/NCSA)은 별개 → **CC0 태그 신뢰 불가로 배제**(2편 ITU 사진 배제와 동일 부류). 4편 제작 시 counsel 인용(공표된 저작물의 인용) 판정 또는 asset-creator 재현으로 처리할 것. ②**라인모드 브라우저 당대 실물 화면** — Commons·검색 2각도 0건. EP03-IMG-08(현대 렌더)로 대체 가능하나, 당대 터미널 룩이 필요하면 **재현 필요 플래그**: asset-creator가 초록 텍스트 터미널 연출로 첫 페이지 텍스트(PD-text 주장 범위)를 재현 + "재현 화면" 표기(2편 배지 선례 절차).
