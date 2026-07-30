@@ -30,7 +30,7 @@
 | 6b | **Episode04 클래스 신작(약 800행)** | video-producer | ⏳ | `video/build_v2.py` + 등록부 2668행 | 음성 확보 후 착수(타이밍이 wav 길이 파생) |
 | 7 | 본편 1080p 렌더 | video-producer | ⏳ | `video/output/04_v2/episode.mp4` | 약 70분 |
 | 8 | 쇼츠 2종 | video-producer | ⏳ | `video/output/04_v2/shorts_A.mp4`·`shorts_B.mp4` | |
-| 9 | 썸네일 | visual-designer | 🔄 | `video/output/04_v2/thumb*` + `refs/ep04-thumbnail-spec.md` | 제목 확정으로 해금. 금지: 도형 로고·실존 얼굴·Mosaic 실캡처. **"두 시간" 문구는 사실 판정(1c) 전 확정 금지** — 두 벌 제작 후 판정 결과로 선택 |
+| 9 | 썸네일 | visual-designer | ✅ | `video/output/04_v2/thumbnail.png`(주안 A)·`thumbnail_alt_b.png` + `refs/ep04-thumbnail-spec.md` | **총감독 육안 검수 통과**(2026-07-30 이미지 직접 열람): 도형 로고 0·실존 얼굴 0·실캡처 0·시장 정지 연출 0, NSCP는 자체 서체, "재현 화면" 표기 실재, 앰버 키워드+폴라로이드 차트(28→71→74.75→58.25)+1995 뱃지 공식 준수. 전량 자체 재현(외부 다운로드 0). A안 주력(구체 소수점 훅 $6.85). 잔여: 실기기 축소 확인·업로드 후 A/B(analyst) |
 | 10 | 메타·SEO | channel-adapter | 🔄(**정정 중**) | `refs/ep04-youtube-meta.md`(사본, 커밋 1655455) + `video/output/04_v2/youtube_meta.txt` | 1차 완료(제목 77자·태그 18건·md5 일치)했으나 **1c 판정으로 제목·설명 첫 문단·쇼츠 B 제목 정정 재가동** — 새 04.json title 기준, 전수 grep + md5 재대조 지시 |
 | 11 | 법무 최종 심사 | copyright-counsel | ⏳ | `refs/legal-review-ep04.md` | |
 | 12 | 스펙 실측 | 총감독 | ⏳ | `video/verify_output_spec.py 04` | |
@@ -66,7 +66,7 @@
 | channel-adapter | 유튜브 메타·SEO 원고(제목 확정 → 썸네일 해금) | `a0c8df4598e1cbfb1` | ✅ 완료 |
 | planner-writer(재가동) | 사실 재검증: 나스닥 2시간 쟁점 | `ae78b58dcaf053a63` | 🔄 |
 | asset-scout | BGM Wayback 스냅샷(시급) + 소재 조달 | `af5bd9def977d2dd6` | 🔄 |
-| visual-designer | 썸네일 주안+alt | `a82e140a278b5d2ae` | 🔄 |
+| visual-designer | 썸네일 주안+alt | `a82e140a278b5d2ae` | ✅ 완료 |
 | marketing-analyst 하위 #1 | 브라우저 댓글 census + 채널 홈 레이아웃 실측 | `ac04fcbb5a20482f2` | 🔄 |
 | marketing-analyst 하위 #2 | force-ssl 스코프·커뮤니티 탭 요건·재생목록 SEO 리서치 | `a0db61574764c6239` | 🔄 |
 
@@ -100,6 +100,13 @@
 10. **BGM 라이선스 이행 3종** — ①발행 직전 `hasYoutubeContentId` 재실측(신규 트랙이라 사후 등록 가능 — counsel 조건①) ②Wayback 스냅샷 2건 대장 기재 확인 ③쇼츠는 내레이션 트랙 동반 필수(정지이미지+음악만 금지).
 11. **AI 라디오 '아니요' 조건 3종 실측**(counsel §15) — ①전 재현 컷 `(재현 화면)` 표기를 최종 렌더 프레임 계수로 검증 ②ref.wav가 3편과 동일 파일(대장 기재) ③AI 생성 실존 인물 얼굴 0건. 하나라도 깨지면 판정 무효 → counsel 재회부 후에만 진행.
 12. **크레딧 양방향 전수 대조** — video-producer의 실사용 파일 목록(파일명+md5)과 크레딧 블록 대조: 미사용 행 삭제, 누락 발견 시 발행 차단. 이 대조를 통과해야 `[[CREDITS_PENDING]]` 치환 자격.
+
+## 3-3b. auditor 발행 전 감사 의뢰 시 전달 항목 (누적)
+
+1. **§5 모범 사례 기록 요청**: channel-adapter가 메타 자기 체크리스트에 금지 문자열 4종을 예시로 나열했다가 자기 검사에 걸려 제거 — "검사 문서가 검사에 걸리는" 자기충족 함정을 스스로 적발(본선 확인).
+2. **커밋 경합 1건 참고**: visual-designer 파일 3건(`refs/ep04-thumbnail-spec.md`·`refs/_DONE_thumb_ep04.txt` 등)이 **타 세션 커밋 `eac5a0a`("strategy: …")에 쓸려 들어감**(designer 1차 커밋이 PowerShell 5.1 따옴표 깨짐으로 실패한 사이 동시 세션이 커밋). 파일 내용 무결은 designer가 실측 확인, 히스토리 재작성은 하지 않음(동시 커밋 중 재작성이 더 위험 — 옳은 판단). 감사 시 커밋 메시지-내용 불일치로 오인하지 말 것.
+3. **대본 내용 품질 독립 검증**: 총감독이 §9 예산 규율로 04.json 전문을 통독하지 않음 — planner-writer 교차검증 보고와 STT 검수가 1차 담보, 감사에서 독립 확인 요망.
+4. **counsel 판정서(§15 포함) 전문 대조**: 총감독은 마커 요약+하류 팀 직접 Read로 운용 — 판정 조건의 이행 여부를 감사가 원문 기준으로 대조.
 
 ## 3-4. 하위 에이전트 운용 규율 (2026-07-30 실측 — §9-3의 두 번째 구멍)
 
