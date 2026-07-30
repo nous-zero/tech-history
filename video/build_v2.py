@@ -1004,12 +1004,19 @@ class EpisodeBase(Scene):
         """
         path = os.path.join(ASSETS, fname)
         record_asset_use(path, self._cur_seg)   # 실사용 소재 대장(크레딧 양방향 대조용)
-        img = ImageMobject(path)
+        # _render_source: 렌더에 투입할 실제 파일 경로. 기본은 원본 그대로(1~3편 비트
+        # 불변). Episode04 부터는 초대형 원본을 렌더용 축소 사본으로 바꿔 태운다 — 대장
+        # 대조·md5 는 위 record_asset_use 가 원본 기준으로 이미 기록했다.
+        img = ImageMobject(self._render_source(path))
         img.height = height
         img.move_to(pos)
         grp = Group(img, self._photo_border(img)) if framed else Group(img)
         self._register_photo_zone(grp, fname)
         return grp
+
+    def _render_source(self, path):
+        """렌더에 태울 파일 경로 — 기본은 원본 그대로. (Episode04 가 축소 사본으로 재정의)"""
+        return path
 
     @staticmethod
     def _photo_border(img):
@@ -3022,6 +3029,36 @@ class Episode04(Episode03):
         with open(path, "w", encoding="utf-8") as f:
             f.write("\n".join(lines))
         print(f"[v2] 소재 대기 {len(self.PLACEHOLDERS_USED)}건 → {os.path.basename(path)}")
+
+    # --- 렌더 성능: 초대형 원본의 렌더용 축소 사본 (2026-07-30 실측 처방) --------
+    # 480p 초벌에서 파노라마 켄 번즈 구간이 4.64초/프레임(다른 애니메이션의 4~10배,
+    # 진행바 실측)으로 잡혔다. 원인: 파노라마 원본 35.3MP(3편 최대 10.5MP의 3.4배)를
+    # manim 이 매 프레임 리샘플. 처방: 긴 변 2560px 상한의 축소 사본을 한 번 만들어
+    # (1.04초 실측) 그것을 태운다. ※최초 기록 "80분에 20%"는 병렬 sleep 폴링을 경과
+    # 시간으로 오독한 계산 착오라 철회한다(rule1-5) — 병목 실측치는 위 프레임 단가다.
+    # 근거: 1080p 화면에서 이 사진의 최대 필요 폭 ≈ 1560px(프레임 78% × 켄 번즈
+    # 1.04배) — 2560px 은 1.6배 여유라 시각 손실 0. **원본 파일은 불변**이고 대장
+    # 대조·매니페스트 md5 는 원본 기준(photo() 가 축소 전에 기록). 사본은 산출물
+    # 폴더(media/asset_cache — 저장소 미추적)에만 생긴다.
+    MAX_ASSET_PX = 2560
+
+    def _render_source(self, path):
+        from PIL import Image
+        with Image.open(path) as im:
+            w, h = im.size
+        if max(w, h) <= self.MAX_ASSET_PX:
+            return path
+        cache = os.path.join(OUT, "media", "asset_cache")
+        os.makedirs(cache, exist_ok=True)
+        out = os.path.join(cache, os.path.basename(path))
+        if not os.path.exists(out) or os.path.getmtime(out) < os.path.getmtime(path):
+            from PIL import Image as I
+            k = self.MAX_ASSET_PX / max(w, h)
+            with I.open(path) as im:
+                im.resize((round(w * k), round(h * k)), I.LANCZOS).save(out, quality=92)
+            print(f"[v2] 렌더용 축소 사본: {os.path.basename(path)} "
+                  f"{w}x{h} → 긴 변 {self.MAX_ASSET_PX}px")
+        return out
 
     # --- 인트로 ---
     def intro(self):
