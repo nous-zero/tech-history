@@ -2669,6 +2669,29 @@ def build_audio():
     return path
 
 
+def mix_bgm(track_path):
+    """내레이션 트랙 아래에 BGM 을 깔고, 먹싱에 쓸 오디오 경로를 돌려준다.
+
+    실제 로직은 video/bgm.py 에 있다(오디오 관할 모듈 분리 — 이 파일은 여러
+    담당이 동시에 고치므로 충돌 면적을 줄인다). BGM 이 없거나 레벨 검수를
+    통과하지 못하면 내레이션 경로를 그대로 돌려준다 — 조용히 넘어가지 않고
+    이유를 화면에 남기는 것이 계약이다(감사 결함 2: 침묵은 통과가 아니다).
+
+    ※ episode_track.wav 는 절대 덮어쓰지 않는다. 무음 비율·길이 불변식을 재는
+      기준이 '내레이션 단독' 이어야 하기 때문(verify_output_spec.verify_body).
+    """
+    try:
+        import bgm as _bgm
+    except ImportError as e:
+        print(f"[v2] 경고: BGM 모듈을 못 불러왔다 — {e} (BGM 없이 진행, 4편부터는 규격 미달)")
+        return track_path
+    try:
+        return _bgm.apply(EP, OUT, OUT_STEM, track_path)
+    except Exception as e:  # noqa: BLE001
+        print(f"[v2] 경고: BGM 믹싱 실패 — {e} (내레이션만으로 진행)")
+        return track_path
+
+
 def partial_dir():
     return os.path.join(OUT, "media", "videos", f"{VH}p{VFPS}",
                         "partial_movie_files", f"Episode{EP}")
@@ -2742,9 +2765,12 @@ def mux_only():
     if vdur + 0.05 < adur:
         print("[v2] *** 조립 거부: 영상이 오디오보다 짧다 — 내레이션 끝이 잘린다 ***")
         return 1
+    # BGM 은 길이 검사를 통과한 '확정 내레이션 트랙' 위에 깐다(믹스 길이 = 내레이션 길이,
+    # bgm.apply 가 불변식으로 강제). 그래서 위의 영상↔오디오 길이 판정은 그대로 유효하다.
+    mux_audio = mix_bgm(track)
     final = os.path.join(OUT, OUT_NAME)
     r = subprocess.run([ff, "-hide_banner", "-loglevel", "error", "-y", "-i", silent,
-                        "-i", track, "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", final],
+                        "-i", mux_audio, "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", final],
                        capture_output=True, text=True, errors="replace")
     if r.returncode != 0:
         print("[v2] 오류: 먹싱 실패 —", (r.stderr or "")[-600:])
@@ -2822,7 +2848,7 @@ def main():
 
     if HAVE_AUDIO:
         import imageio_ffmpeg
-        audio = build_audio()
+        audio = mix_bgm(build_audio())
         final = os.path.join(OUT, OUT_NAME)
         cmd = [imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-i", silent, "-i", audio,
                "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", final]
