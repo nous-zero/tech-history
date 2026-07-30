@@ -1,0 +1,21 @@
+과업 0 완료 — EP04-AUD-01 BGM 스냅샷 증빙 (asset-scout, 2026-07-30)
+
+[1] 라이선스 페이지 아카이브 URL (증빙 ⑨) — 확보 ✅
+https://web.archive.org/web/20260729055902/https://pixabay.com/service/license-summary/
+- HTTP 200 실측, 내용 검수 완료: "Content License" / "without having to attribute the author"
+  / "Standalone means where no creative effort has been applied…" 원문 포함 확인.
+- 채택·판정일(2026-07-30) 직전일 스냅샷 = 채택 시점 라이선스 원문 증명 성립.
+
+[2] 트랙 페이지 아카이브 URL (증빙 ⑩) — Wayback 불가, 대체 증거로 갈음 ⚠️
+- 불가 실측: Pixabay가 archive.org 요청을 차단 — 오늘 SPN 4회 전부 HTTP 204(빈 캡처),
+  부트스트랩 JSON은 404. 역사상 200 캡처 0건(CDX 전수 조회). 우회 5경로(r.jina.ai 경유
+  SPN·archive.today·megalodon.jp·ghostarchive·브라우저판) 전수 시도·전부 차단 실측.
+- 대체 증거(동일 증명 목적 달성): refs/evidence/ep04-bgm/ 4파일
+  + RFC 3161 공인 타임스탬프 4건(freetsa.org, 2026-07-30 02:25:16 GMT)
+  ① pixabay-568180-trackpage-20260730.html — "Content ID Registered" 0건(배지 부재)
+  ② pixabay-568180-bootstrap-20260730.json — hasYoutubeContentId:false + 대조군 3건 true
+     (파일 sha256 = Pixabay 내용주소 URL 해시와 일치 → 원본성 암호학적 입증)
+  ③④ r.jina.ai 제3자 렌더 A/B (대상=배지 없음 / 대조=배지 있음)
+- 논증·실측 로그 전문: refs/evidence/ep04-bgm/README.md
+
+[3] 잔여 의무: 발행 직전 hasYoutubeContentId 재실측 1행(증빙 ⑪) — release-director 게이트.
