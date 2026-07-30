@@ -36,9 +36,9 @@
 | 11 | 법무 최종 심사 | copyright-counsel | ⏳ | `refs/legal-review-ep04.md` | |
 | 12 | 스펙 실측 | 총감독 | ⏳ | `video/verify_output_spec.py 04` | |
 | 13 | 발행 전 감사 | auditor | ✅ | `refs/audit-reports/2026-07-30-ep04-prepublish-audit.md` + 마커(커밋 f77d6b9) | **통합 판정: 조건부 발행 가 — 차단 0건, 이행 조건 5건**(전부 자동 범위). 감사관 별계기 실측: 본편 206.46s·-16.1 LUFS·캡션 13종 프레임 육안·과장 서술 0 / 쇼츠 3세대 전부 재실측·A/B 실물-메타 대응 일치 확인. **조건 이행 현황**: ③ref.wav 대장 행 ✅(총감독 직접, 2135529 — AI 라디오 3조건 완성) / ①부인 문단·②사본 동기화 = adapter 진행 중(마커 실측 후 승인 행) / ④recheck-bgm = 승인 행 직전 총감독 / ⑤MAIN_URL = 업로드 절차 내장 |
-| 14 | 승인 행 기록 | 총감독 | ⏳ | `refs/publish-reviews.md` | |
-| 15 | 업로드·§8 공개 | 총감독 | ⏳ | `refs/youtube-publish-log.md` | |
-| 16 | 고정댓글·역링크(선행⑥) | 총감독 | ⏳ | | |
+| 14 | 승인 행 기록 | 총감독 | ✅ | `refs/publish-reviews.md`(커밋 5695c70) | 3행, 근거 8종, 사용자 청음 2건 원문 인용 |
+| 15 | 업로드·§8 공개 | 총감독 | ✅ | `refs/youtube-publish-log.md`(커밋 ee2b3f1) | **본편 DFwU4SxZGd8 · 쇼츠A DcYlMMYowMQ · 쇼츠B d4ZAN6gpnKM — 전건 public 실측**. 왕복 43 PASS/0 FAIL. recheck-bgm 미등록(⑪행). 파서 섹션명 신선도 사고 1건 수리 후 진행(발행 로그 메모) |
+| 16 | 고정댓글·역링크(선행⑥) | publisher | 🔄 | 마커 `refs/_DONE_publish_final_ep04.txt` 대기 | 고정댓글 3건(브라우저·© 금지) + 1~3편 설명란 역링크(무손실 왕복) + 태그 순서 실험 실측 포함 |
 
 ## 2. 선행 과업 6건 (4편 병행 — 원천: `refs/pipeline-status.md` "4편 이월 과업")
 
