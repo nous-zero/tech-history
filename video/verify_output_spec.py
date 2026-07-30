@@ -646,7 +646,20 @@ def _rgb_at(mp4, t, box, ffmpeg):
     return np.frombuffer(out[:w * h * 3], dtype=np.uint8).reshape(h, w, 3)
 
 
-def check_legal_caption_frames(rows, tag, out_dir, mp4):
+def load_caption_exceptions():
+    """counsel 예외 등록부 — (episode, seg, caption 완전 일치) 3중 키.
+    등록부 추가는 counsel 판정 커밋만 가능(§17-3). 판독 실패 = 예외 0건(엄격한 쪽)."""
+    p = os.path.join(ROOT, "video", "legal_caption_exceptions.json")
+    try:
+        with open(p, encoding="utf-8") as f:
+            data = json.load(f)
+        return {(e["episode"], e["seg"], e["caption"]): e
+                for e in data.get("exceptions", [])}
+    except (OSError, ValueError, KeyError, TypeError):
+        return {}
+
+
+def check_legal_caption_frames(rows, tag, out_dir, mp4, ep=None):
     """재현 표기가 **최종 mp4 프레임에 실제로 찍혀 있는지**를 픽셀로 검산한다.
 
     왜 대본·로그만으로 부족한가: 로그의 지속 시간은 조립기가 스스로 낸 숫자다.
@@ -674,6 +687,7 @@ def check_legal_caption_frames(rows, tag, out_dir, mp4):
     if not vw:
         rows.append(Row(tag, "재현 표기 프레임 검산", "해상도 판독 실패", "판독", "WARN", ""))
         return
+    exceptions = load_caption_exceptions()
     for c in caps:
         name = "재현 표기 「%s」" % c["text"][:18]
         fr, t0, t1 = c.get("box_frac"), c.get("first_sec"), c.get("last_sec")
@@ -685,7 +699,17 @@ def check_legal_caption_frames(rows, tag, out_dir, mp4):
         bw, bh = (fr[2] - fr[0]) * vw, (fr[3] - fr[1]) * vh
         box = [int(fr[0] * vw + bw * 0.2), int(fr[1] * vh + bh * 0.2),
                int(fr[2] * vw - bw * 0.2), int(fr[3] * vh - bh * 0.2)]
-        need = c["need_sec"]
+        # 요구 하한 — 매니페스트를 믿지 않고 **여기서 독립 계산**한다(자기충족 금지):
+        # 기본 = max(2.0, 문자수÷6, 3.5). counsel 예외 등록부에 (편, seg, 문구 완전
+        # 일치)로 매칭되는 행이 있을 때만 그 required_min_sec 로 교체. 문구가 한
+        # 글자라도 다르면 매칭 실패 = 3.5 유지(예외 실효 — §17-3).
+        need = max(2.0, c["chars"] / 6.0, 3.5)
+        exc = exceptions.get((ep, c.get("seg"), c["text"])) if ep else None
+        exc_note = ""
+        if exc is not None:
+            need = float(exc["required_min_sec"])
+            exc_note = (" · counsel 면제 적용(%s, 승인 %s) — 하한 %.1f초"
+                        % (exc.get("basis", "?"), exc.get("date", "?"), need))
         res = scan_caption_frames(mp4, t0, t1, box, ffmpeg, fps=p["fps"] or 30.0)
         if res is None:
             rows.append(Row(tag, name, "프레임 추출 실패", "≥%.2f초" % need, "WARN",
@@ -699,6 +723,7 @@ def check_legal_caption_frames(rows, tag, out_dir, mp4):
                    c["shown_sec"]))
         if c.get("legacy"):
             note += " · 20자 초과 레거시 예외분"
+        note += exc_note
         note += (" · 판정 기준 = counsel 이 지정한 최종 렌더 프레임 계수(조립기가 스스로 낸"
                  " 숫자가 아니다 — GOVERNANCE §5 자기충족 검증 금지)")
         rows.append(Row(tag, name, "%.3f초 (프레임 계수)" % opaque,
@@ -725,7 +750,7 @@ def verify_body(rows, ep, out_dir):
     # counsel §15 / 총감독 회부(2026-07-30): 크레딧 양방향 대조의 근거 데이터와
     # 재현 표기의 프레임 실재 검산. 둘 다 렌더가 남긴 _render_manifest.json 을 읽는다.
     check_used_assets(rows, tag, ep, out_dir, ROOT)
-    check_legal_caption_frames(rows, tag, out_dir, mp4)
+    check_legal_caption_frames(rows, tag, out_dir, mp4, ep=ep)
 
     # 오디오 규격은 mp4 컨테이너 실측값으로 본다(시청자가 받는 것이 이것이므로).
     check_audio_format(rows, tag, p["sample_rate"], p["channels"], "mp4 컨테이너 실측")

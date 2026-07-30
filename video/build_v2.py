@@ -311,6 +311,27 @@ LEGAL_CAPTION_LEGACY = {
 }
 
 
+def _load_caption_exceptions():
+    """counsel 예외 등록부(video/legal_caption_exceptions.json) 로드.
+
+    매칭 키 = (episode, seg, caption 문자열 완전 일치) 3중 — 문구가 한 글자라도
+    바뀌면 예외 실효(3.5초 단일 규칙 복귀). 등록부 추가는 counsel 판정 커밋만
+    가능하다(§17-3). 파일이 없거나 깨져 있으면 예외 0건 = 가장 엄격한 쪽.
+    """
+    p = os.path.join(ROOT, "video", "legal_caption_exceptions.json")
+    try:
+        with open(p, encoding="utf-8") as f:
+            data = json.load(f)
+        return {(e["episode"], e["seg"], e["caption"]): e
+                for e in data.get("exceptions", [])}
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        print(f"[v2] 경고: 캡션 예외 등록부 판독 실패({e}) — 예외 0건으로 진행")
+        return {}
+
+
+LEGAL_CAPTION_EXCEPTIONS = _load_caption_exceptions()
+
+
 class LegalCaptionError(RuntimeError):
     """법무 표기 캡션이 문법 규칙을 어겼을 때 — 렌더를 진행시키지 않는다."""
 
@@ -677,6 +698,12 @@ class EpisodeBase(Scene):
                 n = g.legal_note
                 if n["first"] is None:
                     n["first"] = t
+                    n["seg"] = self._cur_seg
+                    # counsel 예외 등록부 대조 — (편, 세그, 문구 완전 일치)만 하한 교체
+                    exc = LEGAL_CAPTION_EXCEPTIONS.get((EP, self._cur_seg, n["text"]))
+                    if exc is not None:
+                        n["need"] = float(exc["required_min_sec"])
+                        n["except_basis"] = exc["basis"]
                 n["last"] = t
                 # 표기가 떠 있던 **모든 순간에 공통으로 덮고 있던 칸**(교집합)을 남긴다.
                 # 켄 번즈로 캡션이 밀려도 이 칸은 창 내내 캡션이 차지한 자리이므로,
@@ -804,7 +831,9 @@ class EpisodeBase(Scene):
                         round((box[1] + fw / 2) / fw, 5),   # right
                         round((fh / 2 - box[2]) / fh, 5)]   # bottom
             caps.append({"text": n["text"], "chars": n["chars"],
+                         "seg": n.get("seg"),
                          "need_sec": round(n["need"], 3),
+                         "exception_basis": n.get("except_basis"),
                          "first_sec": None if n["first"] is None else round(n["first"], 3),
                          "last_sec": None if n["last"] is None else round(n["last"], 3),
                          "shown_sec": 0.0 if (n["first"] is None or n["last"] is None)
@@ -879,11 +908,13 @@ class EpisodeBase(Scene):
         for g in LEGAL_CAPTIONS:
             n = g.legal_note
             shown = 0.0 if (n["first"] is None or n["last"] is None) else n["last"] - n["first"]
-            flag = "레거시 예외" if n["legacy"] else "규격"
+            flag = ("counsel 면제" if n.get("except_basis")
+                    else ("레거시 예외" if n["legacy"] else "규격"))
             mark = ("미달" if shown + self.LEGAL_EST_SLACK < n["need"]
                     else ("여유 적음" if shown + 1e-6 < n["need"] else "OK"))
             print(f"    - 표기 「{n['text']}」 {n['chars']}자 [{flag}]: "
-                  f"추정 하한 {shown:.2f}초 / 요구 {n['need']:.2f}초 ({mark})")
+                  f"추정 하한 {shown:.2f}초 / 요구 {n['need']:.2f}초 ({mark})"
+                  + (f" · 근거 {n['except_basis']}" if n.get("except_basis") else ""))
         print(f"    ※ 위 '추정 하한'은 애니메이션 경계에서만 재는 값이라 실제보다 "
               f"최대 {self.LEGAL_EST_SLACK}초 짧게 나온다. **확정 판정은 완성본 프레임 "
               f"전수 계수**(verify_output_spec.py '재현 표기' 행).")

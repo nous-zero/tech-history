@@ -111,6 +111,15 @@ def part_v2():
     names = [n for n, _b, _p in sc._obstacles()]
     check("배치 계산에 들어가는 구역", names, ["명시"])
 
+    # ② counsel 예외 등록부(§17-3) — 3중 키 완전 일치, 문구 변형 시 실효
+    exc = B.LEGAL_CAPTION_EXCEPTIONS
+    check("면제 등록 (04, 12, 작성자 관찰)",
+          ("04", 12, "작성자 관찰") in exc, True)
+    check("면제 하한", exc.get(("04", 12, "작성자 관찰"), {}).get("required_min_sec"), 2.0)
+    check("문구 변형 = 실효(공백 제거)", ("04", 12, "작성자관찰") in exc, False)
+    check("세그 불일치 = 실효", ("04", 11, "작성자 관찰") in exc, False)
+    check("편 불일치 = 실효", ("05", 12, "작성자 관찰") in exc, False)
+
     # ③ 4편부터 자동 구역이 '차단'으로 승격
     check("자동구역 차단 기준편", E.ZONE_STRICT_FROM_EP, 4)
     B.EP = "03"

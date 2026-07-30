@@ -1,0 +1,24 @@
+{
+  "_원칙": [
+    "이 파일은 법무 캡션 '단일 규칙'(20자 이내 + 최소 3.5초 — legal-review-ep04 §6-3)의",
+    "예외 등록부다. **등록부 추가는 copyright-counsel 판정 커밋만 가능하다** — 다른",
+    "에이전트·세션이 행을 추가·수정하는 것은 판정 위조다(§17-3 발주 원칙).",
+    "매칭은 (episode, seg, caption 문자열 완전 일치) 3중 키다. 캡션 문구가 한 글자라도",
+    "바뀌면 예외는 실효하고 3.5초 단일 규칙으로 복귀한다(재승인 필요).",
+    "required_min_sec 는 counsel 원공식 max(2.0초, 문자수÷6)의 값이며, 3.5초 상수는",
+    "운영 편의 장치라 원공식과 충돌 시 원공식이 우선한다는 §17 판정이 근거다."
+  ],
+  "exceptions": [
+    {
+      "episode": "04",
+      "seg": 12,
+      "caption": "작성자 관찰",
+      "class": "권장",
+      "required_min_sec": 2.0,
+      "measured_sec": 2.70,
+      "basis": "refs/legal-review-ep04.md §17",
+      "approved_by": "copyright-counsel",
+      "date": "2026-07-30"
+    }
+  ]
+}
