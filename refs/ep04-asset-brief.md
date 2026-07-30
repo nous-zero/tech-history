@@ -34,7 +34,7 @@
 
 | id | scene | 필요한 화면 | 유형 | 검색 키워드(영어 포함) | 위험 | 대체안 |
 |---|---|---|---|---|---|---|
-| 0 | `nasdaq_halt` | 훅. "거래가 열리지 않는다"는 정지의 이미지 — 1990년대 증권 시세 단말·시세판, 멈춘 티커 | 실사 + 재현 | `stock ticker 1990s`, `trading floor 1995`, `stock quote terminal 1990s`, `NYSE trading floor` (PD-US-Gov 촬영분 우선), Commons `Category:Stock exchanges` | 🟠 (나스닥 로고·MarketSite는 🔴 금지) | 재현: 검은 화면에 호가만 깜빡이다 "거래 개시 지연" 자막. 로고 없이 만들 것 |
+| 0 | `nasdaq_delay` | 훅. "한 종목의 첫 거래가 열리지 않는다"는 이미지 — 1990년대 증권 시세 단말·시세판, 체결가 없이 깜빡이는 한 종목 | 실사 + 재현 | `stock ticker 1990s`, `trading floor 1995`, `stock quote terminal 1990s`, `NYSE trading floor` (PD-US-Gov 촬영분 우선), Commons `Category:Stock exchanges` | 🟠 (나스닥 로고·MarketSite는 🔴 금지) | 재현: 검은 화면에 한 종목 호가만 체결 없이 깜빡이다 "개장 지연" 자막. **시장 전체가 멈춘 연출 금지**(사실검증 `refs/ep04-fact-check-nasdaq.md` — 멈춘 건 넷스케이프 한 종목의 개장뿐). 로고 없이 만들 것 |
 | 1 | `recap_free_web` | 3편 회수 — CERN 무료 공개 성명서 + 최초 웹사이트 화면 | **재사용** | 대장 `EP03-IMG-09`(`ep03_free_release_p1.jpg`), `EP03-IMG-08`(`ep03_first_website.png`) | 🟠 (© CERN 크레딧 승계 필수 / "재현 화면" 표기 승계) | 신규 조달 불요. 조건만 승계 확인 |
 | 2 | `text_only_web` | 글자만 나오는 초기 웹 — 초록 텍스트 터미널, 라인모드 브라우저 | **재현** | (조달 대상 아님) 3편 미확보 항목 ②에 이미 **"재현 필요 플래그"** 로 남아 있음 | 🟢 (자체 제작) | 실사 보조: `1990s computer lab`, `VT100 terminal`, `monochrome CRT monitor` (Commons/Pexels) |
 | 3 | `ncsa_parttimer` | ①일리노이대 캠퍼스/NCSA 건물 ②1990년대 대학 전산실(알바생 자리) | 실사 | Commons 실측 후보: `New NCSA Building UIUC by Ragib.jpg`(**주의: 2007년 신축 — 1993년 장면엔 시대 오류**), `Beckman Institute UIUC`(1993년 당시 NCSA 입주처 — 확인 요), `University of Illinois Urbana Champaign quad`, `Altgeld Hall`; 전산실은 `computer lab 1990s`, `university computer lab 1993` | 🟠 (CC BY-SA면 TASL 표기) | 건물 확보 실패 시 → 캠퍼스 전경 + 전산실 조합. **급여 명세는 실물 없음 → "시간당 6달러 85센트" 자막 그래픽으로 처리** |
