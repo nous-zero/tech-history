@@ -265,6 +265,74 @@ def chip(s, color=BLUE, fs=30):
     return VGroup(box, t)
 
 
+# ---------- 법무 표기 캡션(재현 화면·크레딧)의 기계 강제 (2026-07-30 신설) ----------
+#
+# 배경: copyright-counsel §9-4 는 화면 표기가 "읽을 수 있을 만큼" 떠 있을 것을 요구하고,
+# 그 최소치를 max(2.0초, 문자수÷6) 로 정한다. 3편 seg10 의 재현 표기는 33자여서
+# 요구 5.50초 / 실측 5.50~5.75초 — **여유 0의 경계 통과**였다(refs/publish-reviews.md
+# 3편 본편 행 근거 ⑦, refs/pipeline-status.md "4편 이월 과업").
+#
+# 왜 '빌드 실패(예외)'이고 '표시 시간 자동 연장'이 아닌가 —
+#   이 조립기의 최상위 불변식은 **영상 길이 = Σwav 길이**다(자막 SRT·오디오 트랙이 같은
+#   TIMED 표에서 나온다). 캡션 하나를 늘리려면 그 컷의 길이를 늘려야 하고, 그러면 뒤따르는
+#   모든 세그먼트가 밀려 내레이션과 그림이 어긋난다. 게다가 캡션은 사진과 한 몸으로 뜨고
+#   지므로(Group(ph, cap)) 캡션만 늘리면 사진이 사라진 자리에 표기만 떠 있게 된다.
+#   즉 '자동 연장'은 이 구조에서 실행 불가능한 처방이다. 대신 **글자 수를 줄이도록**
+#   렌더 시작 몇 초 안에 예외로 막는다(70분 렌더를 버리지 않는 지점에서 실패시킨다).
+#
+# 20자 상한만으로 충분한가 — **충분하지 않다.** 20자면 요구 지속은 20÷6 = 3.33초이고,
+#   그보다 짧게 띄우면 여전히 위반이다. 그래서 상한(입력)과 **실제 표기 지속 실측(출력)**
+#   두 개를 함께 건다: 지속 미달은 [audit] 줄로 남고 verify_output_spec.py 가 FAIL 로
+#   판정한다(--layout-audit 모드에서는 종료코드 2).
+LEGAL_CAPTION_MAX = 20        # 화면 법무 표기 최대 글자 수(공백 포함)
+LEGAL_MIN_SEC = 2.0           # counsel §9-4 하한
+LEGAL_CHARS_PER_SEC = 6.0     # counsel §9-4 읽기 속도(문자수 ÷ 6)
+
+# 이미 발행된 편의 표기는 소급 변경하지 않는다(사용자 결정 "1~3편 소급 없음").
+# 이 표에 없는 문구가 20자를 넘으면 즉시 빌드가 죽는다 — 예외는 여기 적힌 것뿐이고,
+# 각 항목은 '왜 남아 있는지'를 함께 적는다(조용한 예외 금지).
+LEGAL_CAPTION_LEGACY = {
+    ("03", "최초의 웹사이트 — '웹이란 무엇인가' 안내문 (재현 화면)"):
+        "3편 발행본(2026-07-30, YouTube fQbG07NitUg)의 seg10 표기. 33자 = 요구 5.50초, "
+        "실측 5.50~5.75초로 경계 통과했다. 재렌더 시 화면이 달라지므로 소급 수정 금지 — "
+        "이 예외가 곧 '20자 상한' 규칙이 생긴 이유의 물증이다.",
+}
+
+
+class LegalCaptionError(RuntimeError):
+    """법무 표기 캡션이 문법 규칙을 어겼을 때 — 렌더를 진행시키지 않는다."""
+
+
+LEGAL_CAPTIONS = []   # 이번 렌더에서 만들어진 법무 표기 대장(지속 시간 실측 대상)
+
+
+def legal_min_seconds(text):
+    """counsel §9-4: 표기 지속 ≥ max(2.0초, 문자수÷6)."""
+    return max(LEGAL_MIN_SEC, len(text) / LEGAL_CHARS_PER_SEC)
+
+
+def legal_chip(s, color=GRAY, fs=20, kind="재현 표기"):
+    """법무가 요구하는 화면 표기(재현 이미지·재현 화면·크레딧)를 만드는 **유일한 경로**.
+
+    쉬운 말: "이건 법으로 반드시 화면에 띄워야 하는 문구"라고 조립기에 신고하는 것.
+    신고된 문구만 글자 수 상한과 표기 지속을 기계가 재 준다. 그냥 chip() 으로 만들면
+    법무 표기로 세지 않는다 — 그래서 법무 표기는 반드시 이 함수로 만든다.
+    """
+    if len(s) > LEGAL_CAPTION_MAX and (EP, s) not in LEGAL_CAPTION_LEGACY:
+        raise LegalCaptionError(
+            f"법무 표기 캡션 {len(s)}자 — 상한 {LEGAL_CAPTION_MAX}자 초과: {s!r}\n"
+            f"  counsel §9-4 요구 표기 지속 = max(2.0, {len(s)}÷6) = "
+            f"{legal_min_seconds(s):.2f}초. 컷이 그만큼 길지 않으면 위반이다.\n"
+            f"  조치: 문구를 {LEGAL_CAPTION_MAX}자 이내로 줄이거나(권장), 정말 못 줄이면 "
+            f"build_v2.LEGAL_CAPTION_LEGACY 에 사유와 함께 등록할 것.")
+    g = chip(s, color, fs)
+    g.legal_note = {"text": s, "chars": len(s), "need": legal_min_seconds(s),
+                    "kind": kind, "first": None, "last": None,
+                    "legacy": (EP, s) in LEGAL_CAPTION_LEGACY}
+    LEGAL_CAPTIONS.append(g)
+    return g
+
+
 def missile(scale=1.0):
     m = Triangle().scale(0.22 * scale).rotate(PI)  # 아래를 향한 삼각형
     m.set_fill(RED, 1).set_stroke(RED, 2)
@@ -421,10 +489,60 @@ class EpisodeBase(Scene):
             self.fit_frame(m)
         return m
 
+    # --- 법무 표기 지속 실측 --------------------------------------------------
+    def _scene_time(self):
+        """지금까지 흐른 장면 시각(초). manim CE 0.20 의 renderer.time."""
+        return float(getattr(self.renderer, "time", 0.0) or 0.0)
+
+    def _live_ids(self):
+        """무대에 올라 있는 모든 요소의 id 집합(자식까지) — 캡션은 Group 안에 들어 있어서
+        self.mobjects(최상위)만 훑으면 '무대에 없다'고 오판한다."""
+        live = set()
+        for m in self.mobjects:
+            try:
+                live.update(id(x) for x in m.get_family())
+            except Exception:  # noqa: BLE001
+                live.add(id(m))
+        return live
+
+    _t_before = 0.0     # 직전 play/wait 가 시작된 장면 시각
+
+    def _track_legal(self, live):
+        """법무 표기 캡션이 화면에 떠 있던 구간을 기록한다.
+
+        감사 시점은 애니메이션이 '끝난 뒤'뿐이므로, 처음 보인 캡션의 시작 시각은
+        그 애니메이션이 **시작된** 시각(_t_before)으로 잡는다 — 등장 애니메이션(FadeIn)
+        동안에도 캡션은 화면에 그려져 있기 때문이다. 끝 시각은 마지막으로 보인 감사 시점.
+        (퇴장 애니메이션 동안 남아 있던 시간은 세지 않는다 = 항상 과소 계상 = 안전한 쪽.)
+        """
+        if not LEGAL_CAPTIONS:
+            return
+        t = self._scene_time()
+        for g in LEGAL_CAPTIONS:
+            if id(g) in live:
+                n = g.legal_note
+                if n["first"] is None:
+                    n["first"] = self._t_before
+                n["last"] = t
+
+    def legal_shortfalls(self):
+        """표기 지속이 counsel 요구치에 못 미친 캡션 목록. (문구, 실측, 요구) 튜플."""
+        out = []
+        for g in LEGAL_CAPTIONS:
+            n = g.legal_note
+            if n["first"] is None:
+                out.append((n["text"], 0.0, n["need"], "화면에 한 번도 안 뜸"))
+                continue
+            shown = n["last"] - n["first"]
+            if shown + 1e-6 < n["need"]:
+                out.append((n["text"], shown, n["need"], "지속 미달"))
+        return out
+
     def audit_layout(self):
         """지금 무대에 올라 있는 모든 요소를 상대로 두 불변식을 기계 판정한다."""
         if self._overflow is None:
             self._overflow, self._intrusion, self._crowding = {}, {}, {}
+        self._track_legal(self._live_ids())
         hw, hh = config.frame_width / 2, config.frame_height / 2
         for m in self.mobjects:
             if m is self.subtitle:
@@ -474,12 +592,26 @@ class EpisodeBase(Scene):
                   f"최소 여유 {self.LAYOUT_MARGIN} 미달")
             for k, v in sorted(cr.items(), key=lambda x: -x[1]):
                 print(f"    - 근접 {k}: 여유 잔량 {self.LAYOUT_MARGIN - v:.2f}")
+        # 법무 표기(재현 화면·크레딧) 지속 실측 — counsel §9-4. 상한(20자)만으로는
+        # 부족하다: 20자여도 3.33초 미만으로 띄우면 위반이므로 출력을 함께 잰다.
+        short = self.legal_shortfalls()
+        print(f"[audit] {name}: 법무 표기 지속 미달 {len(short)}건 "
+              f"(표기 {len(LEGAL_CAPTIONS)}건, 상한 {LEGAL_CAPTION_MAX}자)")
+        for g in LEGAL_CAPTIONS:
+            n = g.legal_note
+            shown = 0.0 if n["first"] is None else n["last"] - n["first"]
+            flag = "레거시 예외" if n["legacy"] else "규격"
+            print(f"    - 표기 「{n['text']}」 {n['chars']}자 [{flag}]: "
+                  f"실측 {shown:.2f}초 / 요구 {n['need']:.2f}초 "
+                  f"({'미달' if shown + 1e-6 < n['need'] else 'OK'})")
 
     def play(self, *a, **kw):
+        self._t_before = self._scene_time()
         super().play(*a, **kw)
         self.audit_layout()
 
     def wait(self, *a, **kw):
+        self._t_before = self._scene_time()
         super().wait(*a, **kw)
         self.audit_layout()
 
@@ -1671,7 +1803,7 @@ class Episode02(EpisodeBase):
             badge = self.photo("ep02_badge_recreation.png", height=4.3,
                                pos=UP * 0.35, framed=False)
             # 법무 조건: 실사 사료로 오인하지 않게 화면 안에 상시 표기
-            note = chip("재현 이미지", GRAY, 20).move_to(RIGHT * 3.7 + UP * 2.7)
+            note = legal_chip("재현 이미지", GRAY, 20).move_to(RIGHT * 3.7 + UP * 2.7)
             self.st["badge"] = badge
             t1 = max(0.4, min(0.9, d * 0.35))
             self.play(FadeIn(badge, scale=1.08), FadeIn(note), run_time=t1)

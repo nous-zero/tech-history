@@ -55,6 +55,29 @@
             "statusMessage": "푸시 게이트: 원격 최신 여부 확인 중"
           }
         ]
+      },
+      {
+        "matcher": "Read|read_page|browser_batch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "PY=$(command -v python || command -v python3) && \"$PY\" \"$CLAUDE_PROJECT_DIR/.claude/hooks/context_guard.py\"",
+            "timeout": 15,
+            "statusMessage": "컨텍스트 게이트: 대량 유입 차단·교정 중"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Read|Bash|PowerShell|Grep|Glob|WebFetch|WebSearch|Agent|Task|mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "PY=$(command -v python || command -v python3) && \"$PY\" \"$CLAUDE_PROJECT_DIR/.claude/hooks/context_budget.py\"",
+            "timeout": 15
+          }
+        ]
       }
     ]
   }
