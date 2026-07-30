@@ -3734,7 +3734,12 @@ class Episode04(Episode03):
         def a0(d):
             law = chip("시리즈의 법칙", INK, 24).to_corner(UL, buff=0.5)
             rule = ktext("모든 해결은 새로운 문제를 낳는다", 40, INK, bold=True)
-            rule.move_to(UP * 1.6)
+            # 왼쪽 정렬 — 그림자 패널(x 3.1~)의 왼쪽 경계에서 0.45 여유를 두고 전문이
+            # 항상 판독되게 한다. (480p 초벌 실측 결함: 중앙 배치 시 폭 ±4.3 이라
+            # 꼬리 "낳는다"가 패널에 반 잘린 채 3초 지속 — f183~187s.png.
+            # 의도 확인: a1 의 set_opacity(0.4) 가 원설계다 — "배경으로 물러남"이지
+            # "가림"이 아니었다. 가림은 x 범위 미검산이 낳은 결함이 맞다.)
+            rule.move_to(LEFT * 1.5 + UP * 1.6)
             self.st["rule"] = rule
             self.act(d, FadeIn(law, shift=DOWN * 0.2), FadeIn(rule, scale=1.08))
 
@@ -3752,6 +3757,11 @@ class Episode04(Episode03):
             shadow.set_fill("#374151", 0.92)
             shadow.move_to(RIGHT * 4.9 + DOWN * 0.7)   # 바닥에 접지한 실루엣
             self.claim_bottom(shadow)                   # 하단 진입은 설계 — 신고
+            # 일반 처방(총감독 ④, 4편 즉시 적용): 그림자류 대형 패널은 사진이 아니라서
+            # 감사가 원리상 못 보던 사각지대였다 — 구역으로 등록해 가시화한다.
+            # 위에 일부러 얹는 칩(IE·날짜)은 a2 에서 주인으로 신고한다.
+            self.reserve_zone("거인 그림자(seg13)", shadow, pad=0.0,
+                              owners=[shadow], enforce=False, track=shadow)
             small = RoundedRectangle(corner_radius=0.12, width=1.7, height=1.2)
             small.set_stroke(BLUE, 4).set_fill(WHITE, 1)
             small.move_to(LEFT * 3.4 + DOWN * 1.4)
@@ -3767,10 +3777,12 @@ class Episode04(Episode03):
             who.set_z_index(2)
             who.move_to(RIGHT * 3.6 + UP * 2.4)
             date = chip("1995. 8", RED, 24).next_to(who, DOWN, buff=0.25)
+            self.claim_zone("거인 그림자(seg13)", who, date)   # 그림자 위 의도 배치 신고
             self.act(d, FadeIn(who, scale=1.15), FadeIn(date))
 
         def a3(d):
-            more = chip("그리고 — 숙제가 하나 더", AMBER, 26).move_to(DOWN * 2.5 + LEFT * 2.6)
+            # 중앙 하단 — 좌하단 배치는 '넷스케이프' 창 라벨을 덮었다(480p f185s 실측).
+            more = chip("그리고 — 숙제가 하나 더", AMBER, 26).move_to(DOWN * 2.55 + RIGHT * 0.5)
             self.act(d, FadeIn(more, shift=UP * 0.15))
 
         self.run_beats(S, [a0, a1, a2, a3])
