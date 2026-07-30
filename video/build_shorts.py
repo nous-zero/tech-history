@@ -1600,7 +1600,13 @@ class Short04Base(ShortBase):
         → 약 133px 상향). 기본판은 기존 편 재렌더 동일성을 위해 불변."""
         t = Text(txt, font=KFONT, font_size=40, color=WHITE, weight="BOLD")
         if t.width > SUB_W - 0.5:
-            t.scale_to_fit_width(SUB_W - 0.5)
+            # 긴 문장은 2줄 분할(감사 재검수 A_18: 한 줄 압축 = 여백 24px·과축소)
+            ls = wrap_lines(txt, 2)
+            if ls:
+                t = VGroup(*[Text(x, font=KFONT, font_size=38, color=WHITE,
+                                  weight="BOLD") for x in ls]).arrange(DOWN, buff=0.12)
+        if t.width > SUB_W - 1.4:      # 안전여백 6.8월드 = 양측 여백 >=130px(지시 60px+)
+            t.scale_to_fit_width(SUB_W - 1.4)
         t.move_to(DOWN * 4.0)
         bg = RoundedRectangle(corner_radius=0.18, width=t.width + 0.5, height=t.height + 0.42)
         bg.set_fill("#000000", 0.55).set_stroke(width=0).move_to(t)
@@ -1611,7 +1617,10 @@ class Short04Base(ShortBase):
         def pin(m):
             k = frame.width / config.frame_width
             m.set_width(base_w * k)
-            m.move_to(frame.get_center() + DOWN * frame.height * 0.25)
+            # 상단 고정 앵커(72.5%): 2줄이 되면 아래로 자라 위 요소를 침범하지 않는다
+            cx, cy = frame.get_center()[0], frame.get_center()[1]
+            top_y = cy - frame.height * 0.225
+            m.move_to([cx, top_y - m.height / 2, 0])
 
         grp.add_updater(pin)
         if self.subtitle:
@@ -1686,18 +1695,20 @@ class Short04Base(ShortBase):
 
         def a3(d):
             b1 = chip("연구 문서인데, 글자면 충분하잖아", GRAY, 26, max_w=6.0)
-            b1.move_to(DOWN * 0.6 + LEFT * 0.3)
+            b1.move_to(DOWN * 0.5 + LEFT * 0.3)
             self.st["b1"] = b1
             self.act(d, FadeIn(b1, shift=UP * 0.15))
 
         def a4(d):
             b2 = chip("사람들은 그림 없으면 안 봐요", BLUE, 28, max_w=6.0)
-            b2.move_to(DOWN * 1.9 + RIGHT * 0.2)
+            b2.move_to(DOWN * 1.6 + RIGHT * 0.2)
             self.act(d, FadeIn(b2, scale=1.15))
 
         def a5(d):
-            note = chip("대화는 각색 — 시급은 실제", GRAY, 24, max_w=5.6)
-            note.move_to(DOWN * 2.85)   # 자막 상향 회귀 수리(B_10 실측: 반쯤 가림)
+            # 각색 고지는 표기 의무 축(counsel §5) — 재검수 B_10: 하단 40% 가림 →
+            # 상향 + 축소로 자막 최상단(-3.32, 최대 줌)에서 0.3+ 이격
+            note = chip("대화는 각색 — 시급은 실제", GRAY, 22, max_w=5.4)
+            note.move_to(DOWN * 2.6)
             self.act(d, FadeIn(note, shift=UP * 0.15))
 
         self.beats(info, [a0, a1, None, a3, a4, a5, None])
@@ -1811,7 +1822,7 @@ class Short04Base(ShortBase):
             # DOWN*3.8 은 상향된 자막에 반쯤 덮였다(A_18 재검 실측) → 팔자 열의 빈
             # 공간(우측, 매도 없음의 시각 강조와도 결)로 이동. 최대 줌 대역(3.15) 안.
             band = RoundedRectangle(corner_radius=0.12, width=3.6, height=0.8)
-            band.set_stroke(CRT_DIM, 3).set_fill(CRT_BG, 1).move_to(RIGHT * 1.3 + DOWN * 2.1)
+            band.set_stroke(CRT_DIM, 3).set_fill(CRT_BG, 1).move_to(RIGHT * 1.0 + DOWN * 2.1)
             nscp = Text("NSCP  --.--", font=MONO, font_size=26, color=AMBER,
                         weight="BOLD").move_to(band)
             # 라벨(0.45)과 공모가(3.0) 사이 빈 층(1.6) — 칩끼리 겹치지 않는다
