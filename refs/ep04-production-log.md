@@ -27,7 +27,7 @@
 | 4 | 법무 **선행** 판정(소재·BGM) | copyright-counsel | ✅(추가 3건 포함) | `refs/legal-review-ep04.md` | 커밋 404dcd8·89e519e·c007162(§15). 3단: 즉시 9부류/조건부 6/금지 9. 로고-이름 분리. BGM 조건부 가. **추가 3건 확정**: ①AI 라디오 '아니요'(조건 3 — 재현 표기 프레임 계수·ref.wav 동일성·AI 얼굴 0건, 하나라도 깨지면 재회부) ②크레딧은 실사용에서 올려 적기(파일명+md5 양방향 대조 통과가 치환 자격) ③쇼츠 축약 크레딧 부류 나열 + 고정댓글 © 배제 변형 |
 | 5 | 캐글 음성 생산 | audio-producer(별도 세션) | 🔄(**해제됨**) | `video/output/04_v2/audio/seg000~014.wav` | **임계 경로**. 1c 확정으로 Run All 해제(2026-07-30) — 04.json 재Read 후 정정본(1,657자)으로 생산. scene명 변경(nasdaq_delay) 반영 주의 |
 | 6 | STT 전수 검수 | audio-producer(별도 세션) | 🔄 | `refs/audio-qc-ep04.md` | 고유명사·숫자 단어별 검수 행 의무 |
-| 6b | **Episode04 클래스 신작(약 800행)** | video-producer | ⏳ | `video/build_v2.py` + 등록부 2668행 | 음성 확보 후 착수(타이밍이 wav 길이 파생) |
+| 6b | **Episode04 클래스 신작(약 800행)** | video-producer | 🔄 | `video/build_v2.py` + 등록부 | **음성과 병렬 착수**(2026-07-30 — 작성은 지금, 실렌더 검증만 wav 마커 폴링 후). 미조달 소재는 자리표시 Rect+`_PENDING_ASSETS.txt`(임의 대체 금지). 더미 wav 렌더 금지(길이 불변식 오염). seg11 재현 차트가 클라이맥스 |
 | 7 | 본편 1080p 렌더 | video-producer | ⏳ | `video/output/04_v2/episode.mp4` | 약 70분 |
 | 8 | 쇼츠 2종 | video-producer | ⏳ | `video/output/04_v2/shorts_A.mp4`·`shorts_B.mp4` | |
 | 9 | 썸네일 | visual-designer | ✅ | `video/output/04_v2/thumbnail.png`(주안 A)·`thumbnail_alt_b.png` + `refs/ep04-thumbnail-spec.md` | **총감독 육안 검수 통과**(2026-07-30 이미지 직접 열람): 도형 로고 0·실존 얼굴 0·실캡처 0·시장 정지 연출 0, NSCP는 자체 서체, "재현 화면" 표기 실재, 앰버 키워드+폴라로이드 차트(28→71→74.75→58.25)+1995 뱃지 공식 준수. 전량 자체 재현(외부 다운로드 0). A안 주력(구체 소수점 훅 $6.85). 잔여: 실기기 축소 확인·업로드 후 A/B(analyst) |
