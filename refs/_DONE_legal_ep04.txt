@@ -1,0 +1,20 @@
+완료 시각: 2026-07-30 (copyright-counsel)
+산출물: refs/legal-review-ep04.md (4편 선행 법무 판정서)
+동반 갱신: refs/copyright-policy-kb.md (KB 승격 5건) · refs/asset-ledger.md (EP04-AUD-01 등급 확정)
+커밋: 404dcd8 (판정서) + 후속 1건 (KB 승격 + 대장 등급)
+
+=== 판정 요약 3줄 ===
+1. seg 0~14 전 소재 판정 배정 완료(누락 0). asset-scout **즉시 착수 가능 9부류**(시세단말·컴퓨터실·UIUC 캠퍼스·현대스톡·SGI 하드웨어·MS 건물·1990년대 사무실·수치데이터·3편 재사용) / **조건부 6건**(인물3인·IMG메일·모자이크재현·재사용2건·차트캡션·BGM) / **금지 9건**(Mosaic 실제 스크린샷·Netscape 화면과 N로고·IE화면과 MS로고·Mozilla 공룡·Nasdaq 로고와 MarketSite·SGI로고·1995 신문잡지·AP/Getty 뉴스아카이브·AI생성 실존인물 얼굴).
+2. **로고와 이름을 분리**했다 — 도형 로고는 금지(1차 사유는 위험이 아니라 **조달 근거 부재**: 위키피디아 비자유 공정이용 태그는 우리에게 라이선스를 주지 않는다), 그러나 **우리 서체로 쓴 이름 표기·제목의 상표명은 가**(USCO Compendium §914.1 "Wording"·"mere scripting or lettering"은 저작권 불발생). 이름을 쓸 수 있으므로 서사 손실 0.
+3. Mosaic 실제 스크린샷 **금지 유지**(3편 배제 판정을 독립 재현으로 정당화) — 1993 COPYRIGHT 원문이 "academic, research and internal business purposes only", "NCSA Open Source License"는 Mosaic과 무관(원문 언급 0건 — 오적용 차단), 일리노이대 교육·보도용 허용 명문 부재. 대체는 **재현**이며 §6에 재현/복제의 선과 집행 규칙(원본 스크린샷을 열지 않는다)을 확정.
+
+=== 쟁점 A (Pixabay Standalone 사정거리) 결론 ===
+**[가]** — 영상·내레이션·자막과 믹스한 mp4 배포는 Standalone("no creative effort has been applied") 금지의 사정거리 밖이고(FAQ: "part of a larger creative work and not distributed as a standalone file"), 플랫폼 한정 문구가 라이선스 전문에 **명시 없어** 유튜브·틱톡·릴스·링크드인 결론이 동일하며, 표기 의무는 **없다**(ToS 6조) — 다만 ①쇼츠는 **내레이션 트랙 동반 필수**(정지이미지+음악만인 영상은 Pixabay 공식 클레임 고위험 경고) ②**mp3를 저장소에 커밋하면 그것이 유일한 위반 지점**이므로 video/output/ gitignore 유지가 곧 라이선스 이행.
+
+=== 쟁점 B (Content ID 정책화) 결론 ===
+**트랙 #568180 조건부 승인 + 정책 승격 예** — A/B 대조검증(같은 업로더의 등록 트랙에서 배지 확인 후 대상에서 부재 확인)으로 미등록을 독립 재현했으나 **게시일이 2026-07-18(12일 된 신규 트랙)**이고 Pixabay가 사후 등록 가능성을 공식 인정하므로 **발행 직전 재실측이 조건①**이다. KB §1에 "사용 직전 트랙 단위 hasYoutubeContentId 실측, false만 채택 + 대조 트랙 1건 병행 확인 + 최근 게시 트랙은 발행 직전 재실측 의무"를 상시 규칙으로 신설했고, 증거 보존은 **대장 Wayback 스냅샷 2건(⑨⑩)이 핵심**(video/output/ gitignore로 파일이 안 남으므로 채택 시점 미등록 상태의 제3자 증명은 이것뿐 — 지금 안 뜨면 나중에 못 만든다). ACE-Step 전망: **리스크 원천 소멸 아님** — 학습데이터 귀속 논쟁 + 순수 AI 산출물의 저작권 부재로 "우리 저작물" 주장이 3편식 DSP 합성보다 약해지는 교환.
+
+=== 총감독 앞 즉시 조치 3건 ===
+- asset-scout: BGM Wayback 2건을 **지금** 떠라(후행 불가). seg3 UIUC 건물은 촬영 연도 필수 확인(2007 신축의 1993 배치는 시대 오류).
+- video-producer: **20자 × 3.5초 = 단일 규칙**(상수 박으면 문자수 계산 불요). **재현 표기 누락은 AI 라디오 '아니요'를 뒤집는다** — 두 조건 한 몸.
+- visual-designer: 썸네일에 **도형 로고·인물 얼굴 금지**. 주가 숫자($28→$71→$74.75→$58.25) + 재현 시세판으로.
