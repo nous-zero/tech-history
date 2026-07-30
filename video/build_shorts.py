@@ -290,6 +290,41 @@ def chip(s, color=RED, fs=34, max_w=SAFE_W):
     return SafeGroup(box, t)
 
 
+def rect_overlap(a, b, eps=0.01):
+    """두 바운딩박스(왼,오른,아래,위)의 겹침 폭·높이. 안 겹치면 None.
+    (build_v2.rect_overlap 과 동일 — 두 조립기는 별도 스크립트라 공유 모듈이 없다.)"""
+    ox = min(a[1], b[1]) - max(a[0], b[0])
+    oy = min(a[3], b[3]) - max(a[2], b[2])
+    return (ox, oy) if (ox > eps and oy > eps) else None
+
+
+# --- 쇼츠 UI 가림 영역(2026-07-30 4편 이월 과업 ④) ----------------------------
+#
+# 쇼츠는 '프레임 안'이어도 안심할 수 없다: 앱이 영상 위에 자기 UI를 얹는다.
+# 오른쪽 세로줄에 좋아요·댓글·공유·사운드 버튼, 아래에 채널명·제목·설명·진행바.
+#
+# 수치 근거(2026-07-30 실측 조사) — **공식 픽셀 수치는 공개돼 있지 않다.**
+# 구글은 광고 도움말(support.google.com/google-ads/answer/13547298)에서 1080x1920
+# 세이프존을 **그림(PNG 템플릿)으로만** 제공하고 본문에 숫자를 적지 않는다(직접 열어 확인).
+# 그래서 아래 값은 **제3자 측정치의 보수적 상한**이며 '추정'으로 표기한다:
+#   · 하단 여백: 300px(=15.6%) ~ 450px(=23.4%) 사이로 출처마다 다름 → 384px(20%) 채택
+#   · 우측 여백:  96px(= 8.9%) ~ 130px(=12.0%) 사이 → 130px(12%) 채택
+# 보수적(넓은) 쪽을 택한 이유: 이 검사의 목적은 '가려질 위험 경고'이고, 좁게 잡아
+# 놓치는 비용이 넓게 잡아 한 번 더 보는 비용보다 크다. 앱 UI 는 연 3~5회 바뀌므로
+# 이 상수는 **재검증 대상**이다(마지막 확인 2026-07-30).
+SHORTS_UI_BOTTOM = 0.20   # 화면 아래에서부터 가려지는 비율(추정)
+SHORTS_UI_RIGHT = 0.12    # 화면 오른쪽에서부터 가려지는 비율(추정)
+# 자동 등록 구역 위반을 '차단'으로 셀 편 — 1~3편은 이미 발행돼 소급 변경하지 않는다.
+ZONE_STRICT_FROM_EP = 4
+
+
+def _zone_strict():
+    try:
+        return int(re.sub(r"\D", "", EP) or 0) >= ZONE_STRICT_FROM_EP
+    except ValueError:
+        return False
+
+
 class ShortBase(MovingCameraScene):
     SPEC = None  # {"segs": [...], "hook": [...], "title": ...}
 
@@ -298,9 +333,11 @@ class ShortBase(MovingCameraScene):
         self._grid = grid_bg()
         self.add(self._grid)
         self.subtitle = None
+        self.reserve_ui_zones()   # 훅 카드 첫 컷부터 UI 대역이 살아 있게(전 구간 커버리지)
         self.hook_card()
         keep = self.SPEC.get("keep", set())  # 이 세그 뒤에는 화면을 지우지 않음(이야기 연속)
         for k, i in enumerate(self.SPEC["segs"]):
+            self._cur_seg = i
             info = seg_info(i)
             getattr(self, f"seg{i:03d}")(info)
             if self.subtitle:
@@ -310,6 +347,7 @@ class ShortBase(MovingCameraScene):
                 self.hold(GAP)
             else:
                 self.clear_stage(GAP if k < len(self.SPEC["segs"]) - 1 else 0.3)
+        self._cur_seg = "end"
         self.end_card()
         self.report_overflow()
 
@@ -321,10 +359,172 @@ class ShortBase(MovingCameraScene):
             return "「" + " / ".join(t[:16] for t in txts[:2]) + "」"
         return type(m).__name__
 
+    # --- 보호 영역(본편 build_v2.EpisodeBase 에서 이식 — 2026-07-30 과업 ④) --------
+    #
+    # 이식 전 쇼츠에는 '프레임 이탈'만 있었다. 즉 **화면 안이면 무조건 통과**였고,
+    # ①요소끼리 겹치거나 ②쇼츠 앱 UI(우측 버튼줄·하단 제목줄)에 가려지는 유형은
+    # 원리상 검출되지 않았다. 본편에 있던 reserve_zone / avoid_zones / 침범 감사를
+    # 그대로 옮기고, 쇼츠 고유의 'UI 가림 대역' 두 개를 상시 구역으로 얹는다.
+    #
+    # 본편과 다른 점: 쇼츠는 카메라가 밀고 들어간다(MovingCameraScene). UI 는 화면에
+    # 붙어 있지 월드 좌표에 붙어 있지 않으므로, UI 대역은 **매 감사 시점의 카메라
+    # 프레임에서 다시 계산**한다(고정 상자로 두면 줌이 들어간 순간 엉뚱한 곳을 지킨다).
+    LAYOUT_MARGIN = 0.20     # 요소 사이 최소 여유(월드 단위, 프레임 폭 9.0 기준)
+    UI_BOTTOM_ZONE = "쇼츠 UI 하단 대역(제목·채널·진행바)"
+    UI_RIGHT_ZONE = "쇼츠 UI 우측 대역(좋아요·댓글·공유)"
+    PHOTO_ZONE_PREFIX = "사진/스크린샷"
+
+    _zones = None
+    _intrusion = None
+    _advice = None
+    _zones_seen = None
+    _seg_covered = None
+    _cur_seg = "hook"
+    _photo_n = 0
+
+    @staticmethod
+    def bbox(m, pad=0.0):
+        return (m.get_left()[0] - pad, m.get_right()[0] + pad,
+                m.get_bottom()[1] - pad, m.get_top()[1] + pad)
+
+    def reserve_zone(self, name, m, pad=None, owners=(), kind="block",
+                     enforce=True, track=None, ui=None):
+        """침범 금지 구역 등록. 인자 의미는 build_v2.EpisodeBase.reserve_zone 과 같다.
+
+        ui: ("bottom"|"right") — 카메라 프레임을 따라 움직이는 앱 UI 대역.
+            월드 좌표가 아니라 '지금 보이는 화면'의 비율로 매번 다시 계산된다.
+        """
+        if self._zones is None:
+            self._zones = {}
+        pad = self.LAYOUT_MARGIN if pad is None else pad
+        box = self.bbox(m) if hasattr(m, "get_left") else (tuple(m) if m else (0, 0, 0, 0))
+        self._zones[name] = {"box": box, "pad": pad, "owners": set(),
+                             "kind": kind, "enforce": enforce, "track": track, "ui": ui}
+        if owners:
+            self.claim_zone(name, *owners)
+        return box
+
+    def claim_zone(self, name, *owners):
+        z = (self._zones or {}).get(name)
+        if not z:
+            return
+        for o in owners:
+            z["owners"].add(id(o))
+            try:
+                z["owners"].update(id(c) for c in o.get_family())
+            except Exception:  # noqa: BLE001
+                pass
+
+    def claim_ui(self, *mobs):
+        """앱 UI 대역에 **일부러** 두는 요소(구독 칩·© 표기 등)를 정식 거주자로 신고."""
+        for nm in (self.UI_BOTTOM_ZONE, self.UI_RIGHT_ZONE):
+            self.claim_zone(nm, *mobs)
+        return mobs[0] if mobs else None
+
+    def claim_all_photos(self, *mobs):
+        """사진 위에 일부러 얹는 도장·라벨을 '정상 연출'로 신고."""
+        for nm, z in (self._zones or {}).items():
+            if z["kind"] == "edge" and nm.startswith(self.PHOTO_ZONE_PREFIX):
+                self.claim_zone(nm, *mobs)
+        return mobs[0] if mobs else None
+
+    def reserve_ui_zones(self):
+        """쇼츠 앱이 덮는 두 대역을 상시 구역으로 등록(전 구간 커버리지의 뼈대)."""
+        self.reserve_zone(self.UI_BOTTOM_ZONE, None, pad=0.0, kind="block",
+                          enforce=False, ui="bottom")
+        self.reserve_zone(self.UI_RIGHT_ZONE, None, pad=0.0, kind="block",
+                          enforce=False, ui="right")
+
+    def _zone_box(self, z):
+        """구역의 지금 상자 — UI 대역은 카메라 프레임에서, track 은 그 mobject 에서."""
+        if z.get("ui"):
+            f = self.camera.frame
+            l, r = f.get_left()[0], f.get_right()[0]
+            b, t = f.get_bottom()[1], f.get_top()[1]
+            if z["ui"] == "bottom":
+                return (l, r, b, b + (t - b) * SHORTS_UI_BOTTOM)
+            return (r - (r - l) * SHORTS_UI_RIGHT, r, b, t)
+        tr = z.get("track")
+        if tr is not None:
+            try:
+                return self.bbox(tr)
+            except Exception:  # noqa: BLE001
+                return z["box"]
+        return z["box"]
+
+    def _live_ids(self):
+        live = set()
+        for m in self.mobjects:
+            try:
+                live.update(id(x) for x in m.get_family())
+            except Exception:  # noqa: BLE001
+                live.add(id(m))
+        return live
+
+    @staticmethod
+    def _contains(outer, inner, eps=0.01):
+        return (outer[0] - eps <= inner[0] and inner[1] <= outer[1] + eps
+                and outer[2] - eps <= inner[2] and inner[3] <= outer[3] + eps)
+
+    def _obstacles(self, exclude=()):
+        boxes = [(nm, self._zone_box(z), z["pad"])
+                 for nm, z in (self._zones or {}).items() if z.get("enforce", True)]
+        boxes += [(self._describe(m), self.bbox(m), self.LAYOUT_MARGIN) for m in exclude]
+        return boxes
+
+    def avoid_zones(self, m, pad=None, rounds=4):
+        """m 이 (강제) 보호 영역을 침범하면 비켜 세운다 — keep_in() 의 '겹침' 짝.
+        비킨 뒤 세이프 상자 안으로 다시 밀어 넣어 회피가 새 잘림을 만들지 않게 한다."""
+        pad = self.LAYOUT_MARGIN if pad is None else pad
+        for _ in range(rounds):
+            worst = None
+            for nm, z in (self._zones or {}).items():
+                if id(m) in z["owners"] or not z.get("enforce", True):
+                    continue
+                ov = rect_overlap(self.bbox(m, pad * 0.5), self._zone_box(z))
+                if ov and (worst is None or min(ov) > min(worst[1])):
+                    worst = (nm, ov, z)
+            if worst is None:
+                break
+            _nm, (ox, oy), z = worst
+            zl, zr, zb, zt = self._zone_box(z)
+            l, r, b, t = self.bbox(m)
+            if ox <= oy:
+                away = -1.0 if (l + r) / 2 <= (zl + zr) / 2 else 1.0
+                m.shift(np.array([(ox + pad * 0.5) * away, 0.0, 0.0]))
+            else:
+                away = 1.0 if (b + t) / 2 >= (zb + zt) / 2 else -1.0
+                m.shift(np.array([0.0, (oy + pad * 0.5) * away, 0.0]))
+            keep_in(m)
+        return m
+
+    def _register_photo_zone(self, grp, label):
+        type(self)._photo_n += 1
+        nm = f"{self.PHOTO_ZONE_PREFIX} {type(self)._photo_n}: {label}"
+        self.reserve_zone(nm, grp, pad=0.0, owners=[grp], kind="edge",
+                          enforce=False, track=grp)
+        return nm
+
     def audit_frame(self):
         # 시안·완성 렌더에서도 항상 돈다(비용: 바운딩박스 계산뿐) — 잘림은 조용히 지나가면 안 된다.
+        if self._intrusion is None:
+            self._intrusion, self._advice = {}, {}
+            self._zones_seen, self._seg_covered = set(), set()
+        if self.UI_BOTTOM_ZONE not in (self._zones or {}):
+            self.reserve_ui_zones()   # construct 를 안 거친 경로(단위 검사 등) 대비
         frame = self.camera.frame
         hw, hh = frame.width / 2, frame.height / 2
+        live = self._live_ids()
+        zones = []
+        for nm, z in self._zones.items():
+            tr = z.get("track")
+            if tr is not None and id(tr) not in live:
+                continue
+            zones.append((nm, self._zone_box(z), z))
+            self._zones_seen.add(nm)
+        if zones:
+            self._seg_covered.add(self._cur_seg)
+        strict = _zone_strict()
         for m in self.mobjects:
             if m is frame or m is getattr(self, "_grid", None) or m is self.subtitle:
                 continue
@@ -339,18 +539,60 @@ class ShortBase(MovingCameraScene):
                 key = self._describe(m)
                 prev = self.overflow.get(key, (0.0, 0.0, 0.0))
                 self.overflow[key] = (max(prev[0], ox), max(prev[1], oy), frame.width)
+            box = (left, right, bot, top)
+            for nm, zbox, z in zones:
+                if id(m) in z["owners"]:
+                    continue
+                hard = rect_overlap(box, zbox)
+                if not hard:
+                    continue
+                if z["kind"] == "edge" and (self._contains(zbox, box)
+                                            or self._contains(box, zbox)):
+                    continue   # 사진 안에 온전히(의도한 겹쳐 찍기) / 밖에 온전히 = 정상
+                auto = not z.get("enforce", True)
+                bucket = self._intrusion if (not auto or strict) else self._advice
+                k = f"{self._describe(m)} ↔ {nm}"
+                p = bucket.get(k, (0.0, 0.0))
+                bucket[k] = (max(p[0], hard[0]), max(p[1], hard[1]))
 
     overflow = None
 
+    def zone_coverage(self):
+        segs = ["hook"] + list((self.SPEC or {}).get("segs", [])) + ["end"]
+        return len(self._seg_covered or set()), len(segs)
+
     def report_overflow(self):
+        """[audit] 줄 출력 — verify_output_spec.py 가 이 형식을 정규식으로 읽는다."""
         name = type(self).__name__
         if not self.overflow:
             print(f"[audit] {name}: 프레임 이탈 0건 — 모든 요소가 화면 안")
-            return
-        print(f"[audit] {name}: 프레임 이탈 {len(self.overflow)}건 "
-              f"(가로 초과/세로 초과, 월드 단위 · 프레임 폭 9.0 기준)")
-        for k, (ox, oy, fw) in sorted(self.overflow.items(), key=lambda x: -max(x[1][0], x[1][1])):
-            print(f"    - {k}: 가로 +{ox:.2f} / 세로 +{oy:.2f} (당시 가시 폭 {fw:.2f})")
+        else:
+            print(f"[audit] {name}: 프레임 이탈 {len(self.overflow)}건 "
+                  f"(가로 초과/세로 초과, 월드 단위 · 프레임 폭 9.0 기준)")
+            for k, (ox, oy, fw) in sorted(self.overflow.items(),
+                                          key=lambda x: -max(x[1][0], x[1][1])):
+                print(f"    - {k}: 가로 +{ox:.2f} / 세로 +{oy:.2f} (당시 가시 폭 {fw:.2f})")
+        self.report_zones()
+
+    def report_zones(self):
+        name = type(self).__name__
+        it = self._intrusion or {}
+        ad = self._advice or {}
+        seen = self._zones_seen or set()
+        blocking = sum(1 for nm in seen
+                       if (self._zones or {}).get(nm, {}).get("enforce", True))
+        cov, tot = self.zone_coverage()
+        strict = "차단" if _zone_strict() else "권고"
+        print(f"[audit] {name}: 보호영역 침범 {len(it)}건 "
+              f"(등록 구역 {len(seen)}개[명시 {blocking}·자동 {len(seen) - blocking}"
+              f"={strict}], 구간 커버리지 {cov}/{tot})")
+        for k, (ox, oy) in sorted(it.items(), key=lambda x: -min(x[1])):
+            print(f"    - 침범 {k}: 겹침 가로 {ox:.2f} / 세로 {oy:.2f}")
+        print(f"[audit] {name}: 표시영역 권고 위반 {len(ad)}건 "
+              f"({ZONE_STRICT_FROM_EP}편부터 차단 · UI 가림 추정 하단 "
+              f"{SHORTS_UI_BOTTOM:.0%}·우측 {SHORTS_UI_RIGHT:.0%})")
+        for k, (ox, oy) in sorted(ad.items(), key=lambda x: -min(x[1])):
+            print(f"    - 권고 {k}: 겹침 가로 {ox:.2f} / 세로 {oy:.2f}")
 
     def play(self, *a, **kw):
         if self.overflow is None:
@@ -463,10 +705,14 @@ class ShortBase(MovingCameraScene):
             img.scale_to_fit_width(SAFE_W)
         img.move_to(pos)
         if not framed:  # 투명 PNG(배지 등) — 흰 액자 없이
-            return Group(img)
-        border = Rectangle(width=img.width + 0.1, height=img.height + 0.1)
-        border.set_stroke(WHITE, 5).move_to(img)
-        return Group(img, border)
+            grp = Group(img)
+        else:
+            border = Rectangle(width=img.width + 0.1, height=img.height + 0.1)
+            border.set_stroke(WHITE, 5).move_to(img)
+            grp = Group(img, border)
+        # 사진 1장 = 보호영역 1개(테두리를 무는 배치만 적발 — 과업 ④)
+        self._register_photo_zone(grp, fname)
+        return grp
 
     def show(self, *ms):
         self.add(*ms)
