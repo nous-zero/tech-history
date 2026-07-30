@@ -1,0 +1,94 @@
+# _DONE_upload_prep_ep04 — 4편 유튜브 업로드 스크립트 준비 완료 마커
+작성: 2026-07-30 16:59 KST (publisher, 총감독 6대 지시 이행)
+성격: 준비만 완료 — 업로드·공개·삭제 API 호출 0건(지시 준수). 실행은 release-director가 감사 통과 후 집행.
+
+## 1. 산출물 (C:\Users\745ra\.claude\skills\youtube-uploader\scripts\)
+| 파일 | 역할 |
+|---|---|
+| ep04-meta.js | 공용 파서 — youtube_meta.txt 실행 시점 파싱(하드코딩·사본 경유 금지, rule9-1) + 가드 함수 |
+| upload-ep04.js | 비공개 업로드(본편+썸네일 thumbnail.png/쇼츠A/쇼츠B). 모드: parse(드라이 파스)·guard(가드만, 종료코드 0/2)·body|shortsA|shortsB(실업로드) |
+| verify-ep04.js | 왕복 검증(§5 자기충족 금지). 모드: precheck(업로드 전 자체 점검, 토큰 불요)·<bodyId> <aId> <bId>(게시 후 전수 대조) |
+| publish-ep04.js | 비공개→공개 전환(본편→쇼츠A→쇼츠B 순서 인자, 건별 왕복 확인) — 3편판 승계 |
+| recheck-bgm-ep04.js | BGM Content ID 발행 직전 재실측(체크리스트 10항①, 대장 EP04-AUD-01 증빙 ⑪). 종료코드 0=미등록/2=등록/3=판정불가 |
+
+## 2. 구문 검사 (node --check, node v24.11.0)
+5/5 통과: ep04-meta.js · upload-ep04.js · verify-ep04.js · publish-ep04.js · recheck-bgm-ep04.js
+
+## 3. 드라이 파스 실검증 (`node upload-ep04.js parse` — API 호출 0건) → 원문 대조
+- 제목: 04.json title 원문과 전문 일치 실측 + 원고 자기실측(85자)과 동일한 85자 → 3자(대본·메타·파서) 일치
+- 설명: 조립 46행·2,876자(유튜브 상한 5,000자 내). 조립 규칙은 **3편 실게시본**(videos.list로 fQbG07NitUg
+  실측)과 3편 원고를 전문 대조해 도출: ※주석 블록 제거(자리는 빈 줄 1개로 치환)·'챕터:' 괄호 주석 제거·
+  '사용 사료·크레딧:' 인라인 괄호 제거·챕터 행 끝 [seg…] 마커 제거·연속 빈 줄 압축
+- 태그: 18건(원고 명시 "태그 18건"과 일치)·총 133자 ≤ 500자. 원고 순서 그대로 전송(순서 보존 실험 대상)
+- 카테고리 28 / 아동용 아님(selfDeclaredMadeForKids=false) / 언어 ko — 원고 [유튜브 설정 명세]와 일치
+- 쇼츠 A·B: 제목·설명 1행·크레딧 1행 파싱 성공. 설명 조립 = 설명1행 + 빈 줄 + 크레딧행
+  (원고 제목·설명에 #Shorts 기포함 — 3편처럼 말미 #Shorts 행을 별도 추가하지 않음)
+
+## 4. 가드 실사격 (`node upload-ep04.js guard <job>` — API 호출 0건)
+- body: 통과(exit 0) — 금지 문자열·이중 대괄호 0건
+- shortsA: **차단 exit 2** — "PENDING"·"[[" 검출(= [[MAIN_URL_PENDING]]/[[CREDITS_PENDING]] 잔존, 치환 전 정상 차단)
+- shortsB: **차단 exit 2** — 동일
+- 가드 구성: 3편 4종(DRYRUNID·BODY_URL·TODO·PLACEHOLDER) + XXXX 승계, 신규 강화 2종 = PENDING + `[[`/`]]` 잔존.
+  추가 기계 검사: 제목 ≤100자·설명 5,000자 근접 경고·태그 총 ≤500자·#Shorts 1회 초과 금지
+
+## 5. 업로드 전 자체 점검 (`node verify-ep04.js precheck`) — **PASS 20 / FAIL 0**
+- 제목 3자 대조(메타 vs 04.json) 일치 / 85자 ≤ 100자
+- 챕터 8장 vs episode.srt 큐 59건 실측: ±1.5s 대응·단조 증가·0:00 고정·전 장 ≥10s 전부 통과(SRT 끝 205.18s)
+- 링크 HEAD 전수(11건): youtu.be 3건=303·github/cds.cern.ch=200·Wikimedia 5건+Pixabay=403(봇 차단 —
+  경고 통과 처리, 3편 검증 선례. 브라우저 열람 확인은 총감독 몫)
+- 자체 검수 중 결함 1건 적발·수정(rule5-3): URL 추출 정규식이 괄호 포함 파일명(SGI_…_(1990s)_…)을 절단
+  → 균형 괄호 처리로 수정 후 재검 통과
+
+## 6. verify-ep04.js의 §5 준수 설계(자기충족 금지)
+기대값 원천: ①제목=video/scripts/04.json 원문(대본 원천) ②챕터=episode.srt 큐 실측 ③게시 실물(API 응답)에
+금지 문자열 가드 재적용(원본 오염이어도 게시물에서 적발) ④링크 생존 HEAD ⑤태그 다중집합 대조(3편 알파벳
+재정렬 실측 반영) + 게시 순서 원문 출력(원고 순서 보존 실험 — 결과는 refs/youtube-publish-log.md 기록 의무)
+⑥쇼츠 설명에 본편 '실제 videoId' 링크 포함 검사(치환 원고가 아니라 인자 bodyId 기준 — 독립 근거)
+⑦본편 길이 API vs SRT 끝 ±2s
+
+## 7. BGM Content ID 재실측 스크립트 — 실사격 검증 완료 (읽기 전용 조회만)
+- 경로 2단: [1차] audio-producer 방식 승계(트랙 페이지 __BOOTSTRAP_URL__ → 내용 주소 JSON 직독)
+  [2차] counsel 증빙 ⑦ 동일 A/B 대조(r.jina.ai 렌더 — 대조 트랙 573878의 "Content ID Registered" 배지로
+  렌더러 유효성 먼저 검증 후 대상 판정)
+- 실사격 결과(2026-07-30 16:58 KST): **exit 0, hasYoutubeContentId=false(미등록)** — 2차 경로로 판정.
+  1차는 부트스트랩 JSON이 HTTP 404(서비스측 변동 — 같은 날 오전 audio-producer 수신 성공분과 다름,
+  증거 README §3의 SPN 404와 동일 증상)라 자동 폴백. 증거 JSON: 세션 스크래치패드 bgm-recheck-test.json
+- 경로 선택 실측 근거(스크립트 주석에도 명기): pixabay.com은 브라우저 UA 필수(기본 curl UA→403),
+  r.jina.ai는 브라우저 UA 금지(UA-TLS 지문 불일치로 Cloudflare 403 챌린지, 기본 curl UA→200).
+  node fetch는 pixabay가 TLS 지문 차단(403 실측) → curl(Windows 기본 탑재) 사용
+- rule6 내장: 판정 불가 시 임의 값 기록 금지 — exit 3 + '미확인'과 불가 사유 출력
+- **주의(rule1-6)**: 위 실사격 값은 '스크립트 검증' 시점 값이다. 발행 게이트의 공식 재실측(대장 ⑪행 기재)은
+  release-director가 발행 직전에 본 스크립트를 재실행해 그 시점 값으로 기록할 것
+
+## 8. publisher 결정 사항 (총감독 확인 권장)
+1. **쇼츠 태그**: 원고에 명세 없음(3편도 원고 밖 수기 선정) → 본편 태그 상위 6종+["Shorts"]로 파생
+   (Netscape·넷스케이프·Mosaic·모자이크·마크 앤드리슨·넷스케이프 상장·Shorts — 3편 쇼츠 7태그와 동수).
+   대체 지정 원하면 ep04-meta.js shortsTags 산식 수정
+2. **쇼츠 설명 서식**: 3편 게시본은 말미에 "#Shorts" 별도 행이 있었으나 4편 원고는 설명 1행 안에 #Shorts
+   포함 → 원고 그대로 조립(별도 행 미추가). 3편과 서식이 다른 점 인지 요망
+3. 챕터 행 끝 [seg…] 마커·※주석은 게시본에서 제거(3편 실게시본 대조로 도출) — 드라이 파스 전문 육안 확인 권장
+
+## 9. 확인한 것 / 아직 확인 못 한 것
+확인한 것
+- 5파일 구문 검사, 드라이 파스 원문 대조(제목·행수·태그 수·카테고리 28·아동용 아님), 가드 종료코드
+  실사격(0/2/2), precheck 20 PASS, BGM 재실측 스크립트 종단 실사격(exit 0)
+- 산출물 실재: episode.mp4·episode.srt·thumbnail.png·shorts_A.mp4·_render_manifest.json·_DONE_render_1080p.txt
+- 3편 실게시본(본편+쇼츠A) API 조회로 조립 규칙 역산(위 3항)
+아직 확인 못 한 것
+- **shorts_B.mp4 미존재**(video-producer 렌더 대기) — upload-ep04.js shortsB는 파일 실재 검사로 차단됨
+- 실업로드·왕복 검증 본선(verify-ep04.js roundtrip 모드)은 실행 무대상(업로드 금지 지시) — 구문·정적 검증만.
+  게시 후 첫 실행에서 결함이 나오면 총감독이 판단할 것
+- 쇼츠 자리표시자 치환(MAIN_URL 2건·CREDITS 2건)은 본편 업로드 후 youtube_meta.txt에서 수행되는 별도 공정
+- captions API 권한 갱신 여부(3편과 동일 미확인 — 원고 명세 준수: SRT 업로드 없음)
+- OAuth 토큰(.youtube-token.json)의 현재 유효성 — 읽기 조회(fetch-published)는 오늘 성공했으므로 살아 있음(실측),
+  단 업로드 스코프 동작은 실업로드 시점에만 확정 가능
+
+## 10. 권장 실행 순서 (release-director용)
+① node verify-ep04.js precheck (전 항목 PASS 확인)
+② node recheck-bgm-ep04.js <증거.json> (exit 0 확인 → 대장 ⑪행 기재)
+③ node upload-ep04.js body → videoId 확보 (비공개)
+④ youtube_meta.txt 쇼츠 자리표시자 치환([[MAIN_URL_PENDING]]→실 URL, [[CREDITS_PENDING]]→§15-3 축약)
+⑤ node upload-ep04.js guard shortsA / guard shortsB (exit 0 확인) → 각 업로드
+⑥ node verify-ep04.js <bodyId> <aId> <bId> (비공개 상태 왕복 검증) → 발행 전 감사(auditor)
+⑦ §8 게이트 통과 시 node publish-ep04.js <bodyId> <aId> <bId> → 재검증 → 고정 댓글(©기호 금지) →
+   태그 순서 실험 결과 refs/youtube-publish-log.md 기록
