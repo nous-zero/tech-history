@@ -37,6 +37,8 @@
 | 사료 복원 파이프라인 | tech-scout→asset-creator | ⏳ |
 | 캐글 계정(무료 GPU 2배) | 사용자 | ✅ 7/28 개설·전화인증·GPU 실사격 성공(kaggle_tts_v3.ipynb, 커밋 b19145a) |
 | 자산 대장 소급 등록(1편 소재) | asset-scout | ⏳ |
+| **커뮤니티 참여 유도(쇼츠 고정댓글 질문형 교체·본편 설명란 CTA)** | marketing-analyst→publisher | ⏸️ **사용자 보류(2026-07-30)**. 전략서 refs/community-strategy.md. 실측: 시청자 댓글 1건(1편, @gy6h-m8v 호평)·나머지 5건은 우리 고정댓글. force-ssl 재인증은 "주 10건 2주 연속" 전 금지 권고 |
+| **채널 진열 정비(재생목록 2개·홈 섹션·트레일러)** | publisher | 🔜 **4편 발행 완료 후 사용자 재상정(2026-07-30 지시)**. 제안서 refs/channel-layout-proposal.md. 실측: 시청자 화면에 홈·커뮤니티·재생목록 탭 없음, 동영상·Shorts 격자뿐 |
 
 ## 4편 이월 과업 (3편 발행 후 등록 — 2026-07-30 release-director 5대)
 
