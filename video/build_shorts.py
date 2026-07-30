@@ -1664,7 +1664,8 @@ class Short04Base(ShortBase):
                                    flash_radius=1.6))
 
         def a2(d):
-            who = chip("창업 16개월 — 아직 적자", INK, 28, max_w=5.6).move_to(DOWN * 3.4)
+            # DOWN*3.4 는 상향된 자막(상단 -3.55)에 덮인다 — 하단 한계 y-3.4 규칙
+            who = chip("창업 16개월 — 아직 적자", INK, 28, max_w=5.6).move_to(DOWN * 2.7)
             self.act(d, FadeIn(who, shift=UP * 0.2))
 
         self.beats(info, [a0, a1, a2])
@@ -1696,7 +1697,7 @@ class Short04Base(ShortBase):
 
         def a5(d):
             note = chip("대화는 각색 — 시급은 실제", GRAY, 24, max_w=5.6)
-            note.move_to(DOWN * 3.4)
+            note.move_to(DOWN * 2.85)   # 자막 상향 회귀 수리(B_10 실측: 반쯤 가림)
             self.act(d, FadeIn(note, shift=UP * 0.15))
 
         self.beats(info, [a0, a1, None, a3, a4, a5, None])
@@ -1807,9 +1808,11 @@ class Short04Base(ShortBase):
                                  lag_ratio=0.12), rt=min(1.6, d * 0.6))
 
         def a2(d):
-            band = RoundedRectangle(corner_radius=0.12, width=4.4, height=0.9)
-            band.set_stroke(CRT_DIM, 3).set_fill(CRT_BG, 1).move_to(DOWN * 3.8)
-            nscp = Text("NSCP  --.--", font=MONO, font_size=32, color=AMBER,
+            # DOWN*3.8 은 상향된 자막에 반쯤 덮였다(A_18 재검 실측) → 팔자 열의 빈
+            # 공간(우측, 매도 없음의 시각 강조와도 결)로 이동. 최대 줌 대역(3.15) 안.
+            band = RoundedRectangle(corner_radius=0.12, width=3.6, height=0.8)
+            band.set_stroke(CRT_DIM, 3).set_fill(CRT_BG, 1).move_to(RIGHT * 1.3 + DOWN * 2.1)
+            nscp = Text("NSCP  --.--", font=MONO, font_size=26, color=AMBER,
                         weight="BOLD").move_to(band)
             # 라벨(0.45)과 공모가(3.0) 사이 빈 층(1.6) — 칩끼리 겹치지 않는다
             delay = chip("약 2시간 지연", RED, 28, max_w=4.0).move_to(UP * 1.6)
@@ -1870,7 +1873,7 @@ class Short04Base(ShortBase):
 
         def a2(d):
             worth = chip("몸값 — 하루 만에 약 $30억", AMBER, 28, max_w=6.0)
-            worth.move_to(DOWN * 3.3)
+            worth.move_to(DOWN * 3.0)   # 자막 상향 회귀 예방(하단 한계 y-3.4)
             self.act(d, FadeIn(worth, scale=1.2))
 
         self.beats(info, [a0, a1, a2])
