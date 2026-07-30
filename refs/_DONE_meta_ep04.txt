@@ -1,5 +1,19 @@
-_DONE_meta_ep04 — 4편 유튜브 메타 원고 완료 (v2 — 사실 정정 + counsel §15 반영)
-완료 시각: 2026-07-30 (v2 정정 동일자) / 담당: channel-adapter / 의뢰: release-director 6대
+_DONE_meta_ep04 — 4편 유튜브 메타 원고 완료 (v3 — 크레딧 1차 확정분 4행 반영)
+완료 시각: 2026-07-30 (v2·v3 정정 동일자) / 담당: channel-adapter / 의뢰: release-director 6대
+
+[v3 반영 내역 — 크레딧 1차 확정분 (총감독 지시, 전언 아닌 3원천 실측으로 구성)]
+근거 실측: ①대장 refs/asset-ledger.md EP04-IMG-21·09 / EP04-REU-01·02 행(URL·저작자·라이선스·md5·사용처)
+②counsel §16(커밋 b437855 — 클라크 행 설명란 전문은 §16-1 확정 문구 그대로) ③video-producer 편입 커밋 ecf1a4d(실사용 6건).
+반영 4행(설명란 TASL 전문 — §16-1 유효 조건: 이 전문이 실려야 화면 캡션 축약이 법적으로 성립):
+1. UIUC Illini Union and Main Quad — Daniel Schwen, CC BY-SA 4.0, via Wikimedia Commons (seg3, IMG-21)
+2. James H. Clark — Knnkanda, CC BY-SA 3.0, via Wikimedia Commons (seg7 인셋, IMG-09, 「클라크 (연대 미상)」 캡션)
+3. 최초의 웹사이트 "The World Wide Web project" — PD(텍스트) + "재현 화면" 표기 승계 (seg1, REU-01, 3편 서식 승계)
+4. CERN 웹 퍼블릭 도메인 선언문 — © CERN (CERN-IT-9304003) (seg1, REU-02, "모든 사용 편" 재기재 의무)
++ 편입분 중 IMG-19(PD)·IMG-13(CC0)은 표기 의무 없음 — 최종 대조 시 기재 여부 확정.
++ [[CREDITS_PENDING]] 마커는 유지 — ecf1a4d 자체가 "실렌더 미실시(wav 대기)"를 명시하므로, 최종 1080p 렌더
+  `_render_manifest.json` 기준 §15-2 양방향 대조 통과 전에는 확정 아님(1차 확정분 4행도 그 대조 대상).
+왕복 대조(v3 재실행): 본문 md5 = 7f490def52b3ed34764df3d88567716d (각 14,238자, 전문 일치 True).
+자리표시자 재계수: TIMING 8 / CREDITS 5(치환 대상은 본편 1·쇼츠 2로 불변 — +1은 정정 이력의 문서화 언급) / MAIN_URL 3. 금지 문자열 0건.
 
 [v2 정정 내역 — 총감독 지시 2건 이행]
 1. **사실 오류 정정**: "나스닥이 두 시간 멈췄다" → 실제는 NSCP 한 종목의 첫 거래가 주문 폭주로 약 2시간 개장 지연
