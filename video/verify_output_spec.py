@@ -131,6 +131,11 @@ SHORTS_MIN_SEC = 10.0
 # 침묵하지 않고 반드시 출력한다 — 침묵=통과는 결함 2 를 낳은 바로 그 구조다.
 BGM_REQUIRED_FROM_EP = 4
 
+# [보호영역] 자동 등록 구역(자막 띠·하단 UI 띠·사진 테두리)의 위반을 차단으로 셀 편.
+# build_v2.EpisodeBase.ZONE_STRICT_FROM_EP 와 같은 값이어야 한다(두 파일의 사람 눈용
+# 설명이 어긋나면 안 되므로 상수로 박아 둔다).
+ZONE_STRICT_FROM_EP = 4
+
 # ============================================================================
 
 
@@ -309,14 +314,22 @@ def script_expected_seconds(ep, audio_dir):
 #  이 같은 [audit] 형식을 쓰므로 본편·쇼츠를 한 코드로 판정한다.
 #  '보호영역 침범' 은 2026-07-30 신설 — 프레임 안이지만 요소끼리 겹치는 유형
 #  (3편 아웃트로: 예고 부제가 구독 버튼 밑으로 파묻힘)을 잡는 축이다.
-AUDIT_AXES = ("프레임 이탈", "보호영역 침범")
+#  '법무 표기 지속 미달' 은 2026-07-30 신설(4편 이월 과업 ②) — 화면 법무 표기가
+#  counsel §9-4 의 max(2.0초, 문자수÷6) 만큼 떠 있었는지의 **실측 결과**를 읽는다.
+#  글자 수 상한(20자)은 build_v2.legal_chip() 이 렌더 시작 시 예외로 막고, 이 축은
+#  '상한을 지켜도 짧게 띄우면 여전히 위반'인 나머지 절반을 잡는다.
+#  '표시영역 권고 위반' 은 자동 등록 구역(상시 자막·하단 UI 띠, 사진 테두리)의 위반.
+#  1~3편은 확립된 화면 문법이 이 띠를 쓰고 있어 차단하면 경보 피로가 되므로 WARN 이고,
+#  4편부터는 build_v2 가 같은 위반을 '보호영역 침범'(FAIL)으로 올려 보낸다.
+AUDIT_AXES = ("프레임 이탈", "보호영역 침범", "법무 표기 지속 미달", "표시영역 권고 위반")
+BODY_AUDIT_AXES = AUDIT_AXES
 
 
 def audit_lines(out_dir):
     """레이아웃 감사 로그 수집 — build_shorts/build_v2 의 [audit] 출력.
     같은 장면이 여러 로그에 나오면 '가장 최근 파일'의 값을 채택한다(옛 로그의
     수리 전 수치를 지금 값으로 오인하지 않기 위해).
-    반환: {장면이름: {축이름: {"count": n, "source": 파일명}}}"""
+    반환: {장면이름: {축이름: {"count": n, "source": 파일명, "zones":…, "items":…}}}"""
     hits = {}
     files = []
     for fn in os.listdir(out_dir):
@@ -329,14 +342,22 @@ def audit_lines(out_dir):
         except OSError:
             continue
         for axis in AUDIT_AXES:
-            # '(등록 구역 N개)' 꼬리표를 함께 포착한다 — 보호영역 축은 등록 구역이
-            # 0개면 "침범 0건"이 공허하게 참이 되므로, 건수만 읽으면 검사가 돌았다는
-            # 사실을 검사가 무언가를 봤다는 뜻으로 오독한다(2026-07-30 2차 감사 지적).
-            for m in re.finditer(r"\[audit\] (\S+?): %s (\d+)건(?: \(등록 구역 (\d+)개\))?"
+            # 괄호 꼬리표를 통째로 포착해 '검사가 무엇을 봤는지'를 함께 읽는다.
+            #   보호영역 침범 N건 (등록 구역 M개)     → 구역 0개면 "침범 0"은 공허하게 참
+            #   법무 표기 지속 미달 N건 (표기 M건, …) → 표기 0건이면 미달 0도 공허하게 참
+            # 건수만 읽으면 '검사가 돌았다'를 '검사가 무언가를 봤다'로 오독한다
+            # (2026-07-30 2차 감사 지적).
+            for m in re.finditer(r"\[audit\] (\S+?): %s (\d+)건(?: \(([^)\n]*)\))?"
                                  % axis, txt):
+                tail = m.group(3) or ""
+                zm = re.search(r"등록 구역 (\d+)개", tail)
+                im = re.search(r"표기 (\d+)건", tail)
+                cm = re.search(r"구간 커버리지 (\d+)/(\d+)", tail)
                 hits.setdefault(m.group(1), {})[axis] = {
                     "count": int(m.group(2)), "source": os.path.basename(p),
-                    "zones": int(m.group(3)) if m.group(3) is not None else None}
+                    "zones": int(zm.group(1)) if zm else None,
+                    "items": int(im.group(1)) if im else None,
+                    "cover": (int(cm.group(1)), int(cm.group(2))) if cm else None}
     return hits
 
 
@@ -442,18 +463,52 @@ def check_frame_audit(rows, tag, out_dir, expect_scenes=2, scope="", axes=None):
             label = "%s(%s)" % (axis, nm)
             note = "출처: %s" % h["source"]
             verdict = "PASS" if h["count"] == 0 else "FAIL"
-            if axis == "보호영역 침범":
+            if axis == "법무 표기 지속 미달":
+                k = h.get("items")
+                label = "%s(%s, 표기 %s)" % (
+                    axis, nm, ("%d건" % k) if k is not None else "수 미기록")
+                cov = h.get("cover")
+                if k == 0:
+                    verdict = "WARN"
+                    note += (" · 법무 표기 0건 — 이 편에 재현·크레딧 표기가 정말 없는지 "
+                             "counsel 심사서와 대조할 것('미달 0'은 공허하게 참)")
+                elif k is not None:
+                    note += (" · counsel §9-4 max(2.0초, 문자수÷6) 실측. 글자 수 상한 "
+                             "20자는 legal_chip() 이 렌더 시작 시 예외로 막는다")
+                if cov:
+                    note += " · 구간 커버리지 %d/%d" % cov
+            elif axis == "표시영역 권고 위반":
+                # 자동 등록 구역(자막 띠·하단 UI 띠·사진 테두리)의 위반. 차단하지 않는다.
+                verdict = "PASS" if h["count"] == 0 else "WARN"
+                note += (" · 1~3편은 확립된 화면 문법이 하단 띠를 쓰고 있어 경고로 둔다. "
+                         "%d편부터 build_v2 가 같은 위반을 '보호영역 침범'(FAIL)으로 올린다"
+                         % ZONE_STRICT_FROM_EP)
+            elif axis == "보호영역 침범":
                 z = h.get("zones")
+                cov = h.get("cover")
                 label = "%s(%s, 등록 구역 %s)" % (
                     axis, nm, ("%d개" % z) if z is not None else "수 미기록")
                 if z == 0:
                     verdict = "WARN"
                     note += " · 등록 구역 0개 — '침범 0건'은 공허하게 참이다(검사 대상 없음)"
                 elif z is not None:
-                    note += (" · 이 축은 **등록된 %d개 구역에 대해서만** 판정한다. "
-                             "구역 미등록 구간(3편은 아웃트로 외 전 구간)의 요소 간 "
-                             "겹침은 원리상 검출되지 않는다 — 전 구간 구역 등록은 "
-                             "4편 과업" % z)
+                    note += (" · 등록 구역 %d개에 대한 판정" % z)
+                # 구간 커버리지 — '구역이 몇 개냐'보다 '어디를 봤냐'가 본질이다.
+                # 3편 결함(구역 3개가 전부 아웃트로에 몰려 0~140 구간 무방비)은
+                # 개수만 봐서는 안 보인다(2026-07-30 2차 감사 지적).
+                if cov is None:
+                    verdict = "WARN" if verdict == "PASS" else verdict
+                    note += (" · 구간 커버리지 미기록(검사기 신설 전 로그) — 어느 구간이 "
+                             "검사됐는지 확인 불가")
+                else:
+                    c, t = cov
+                    label += " 커버리지 %d/%d" % (c, t)
+                    if c < t:
+                        verdict = "FAIL"
+                        note += (" · **구역 미등록 구간 %d개** — 그 구간의 겹침은 원리상 "
+                                 "검출되지 않는다(검사가 돌았다≠무언가 검사됐다)" % (t - c))
+                    else:
+                        note += " · 전 구간(인트로+세그 %d개) 구역 등록 확인" % t
             rows.append(Row(tag, label, "%d건" % h["count"], "0건", verdict, note))
     if len(hits) < expect_scenes:
         rows.append(Row(tag, "레이아웃 감사 범위", "%d장면" % len(hits),
@@ -570,8 +625,11 @@ def verify_body(rows, ep, out_dir):
 
 def verify_shorts(rows, ep, out_dir):
     names = ["shorts_A", "shorts_B"]
+    # 2026-07-30(과업 ④): 쇼츠에도 보호영역이 생겼다. 이전에는 '프레임 이탈' 한 축뿐이라
+    # 앱 UI 가림·요소 겹침은 원리상 검출 대상이 아니었다. 옛 로그에는 새 축의 줄이 없어
+    # '미확인(WARN)'으로 나오는데, 그것이 정확한 상태 표시다(없는 검사를 통과로 세지 않는다).
     check_frame_audit(rows, "쇼츠", out_dir, expect_scenes=len(names), scope="Short",
-                      axes=("프레임 이탈",))
+                      axes=("프레임 이탈", "보호영역 침범", "표시영역 권고 위반"))
     for nm in names:
         tag = "쇼츠 %s" % nm[-1]
         mp4 = os.path.join(out_dir, "%s.mp4" % nm)

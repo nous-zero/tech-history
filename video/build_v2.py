@@ -284,9 +284,21 @@ def chip(s, color=BLUE, fs=30):
 #   그보다 짧게 띄우면 여전히 위반이다. 그래서 상한(입력)과 **실제 표기 지속 실측(출력)**
 #   두 개를 함께 건다: 지속 미달은 [audit] 줄로 남고 verify_output_spec.py 가 FAIL 로
 #   판정한다(--layout-audit 모드에서는 종료코드 2).
+#
+# ⚠️ 이 캡션은 저작권 표기이자 **유튜브 AI 공개 답변의 전제**다 (counsel 판정서
+#   refs/legal-review-ep04.md §6-2·§8-2, 총감독 회부 2026-07-30).
+#   "재현 화면" 표기가 화면에 떠 있어야 시청자가 그 장면을 실사 사료로 오인하지 않고,
+#   그래서 업로드 시 "실재하지 않는 장면을 생성했는가" 문항에 지금의 답을 유지할 수 있다.
+#   **캡션을 지우면 저작권 축과 AI 공개 축이 동시에 무너진다** — 둘은 한 몸이다.
+#   캡션을 지우거나 시간을 줄이려는 사람은 반드시 counsel 을 먼저 거칠 것.
 LEGAL_CAPTION_MAX = 20        # 화면 법무 표기 최대 글자 수(공백 포함)
 LEGAL_MIN_SEC = 2.0           # counsel §9-4 하한
 LEGAL_CHARS_PER_SEC = 6.0     # counsel §9-4 읽기 속도(문자수 ÷ 6)
+# counsel 4편 단일 규칙(§6-3): "20자 이내 + 최소 3.5초 연속 표시".
+# 20자의 요구 하한이 20÷6 = 3.34초이므로, 상수 3.5초 하나로 20자 이내 **모든** 문구를
+# 덮는다 — 캡션마다 문자수를 세어 시간을 계산할 필요가 없어진다. 다만 레거시 예외처럼
+# 20자를 넘는 문구는 3.5초로 부족하므로(33자=5.50초), 두 값의 **큰 쪽**을 요구한다.
+LEGAL_MIN_HOLD = 3.5
 
 # 이미 발행된 편의 표기는 소급 변경하지 않는다(사용자 결정 "1~3편 소급 없음").
 # 이 표에 없는 문구가 20자를 넘으면 즉시 빌드가 죽는다 — 예외는 여기 적힌 것뿐이고,
@@ -307,8 +319,12 @@ LEGAL_CAPTIONS = []   # 이번 렌더에서 만들어진 법무 표기 대장(�
 
 
 def legal_min_seconds(text):
-    """counsel §9-4: 표기 지속 ≥ max(2.0초, 문자수÷6)."""
-    return max(LEGAL_MIN_SEC, len(text) / LEGAL_CHARS_PER_SEC)
+    """요구 표기 지속 = max(counsel §9-4 공식, 4편 단일 규칙 3.5초).
+
+    쉬운 말: "이 문구는 최소 몇 초 동안 화면에 떠 있어야 하나"를 계산한다.
+    §9-4 공식은 max(2.0초, 문자수÷6), 여기에 4편 단일 규칙의 바닥 3.5초를 얹는다.
+    """
+    return max(LEGAL_MIN_SEC, len(text) / LEGAL_CHARS_PER_SEC, LEGAL_MIN_HOLD)
 
 
 def legal_chip(s, color=GRAY, fs=20, kind="재현 표기"):
@@ -359,8 +375,11 @@ class EpisodeBase(Scene):
     def construct(self):
         self.subtitle = None
         self.st = {}
+        self._cur_seg = "intro"
+        self.reserve_standing_zones()
         self.intro()
         for k, seg in enumerate(TIMED):
+            self._cur_seg = k
             getattr(self, f"seg{k:02d}")(seg["sents"])
             if self.subtitle:
                 self.remove(self.subtitle)
@@ -389,6 +408,68 @@ class EpisodeBase(Scene):
     _overflow = None    # 프레임 이탈 적발 기록
     _intrusion = None   # 보호 영역 침범 적발 기록
     _crowding = None    # 여유(마진)만 침범 — 경고
+    _zones_seen = None  # 실제로 '살아 있던' 구역 이름들(등록만 하고 잠든 것 제외)
+    _seg_covered = None # 구역이 하나라도 살아 있던 구간(인트로 + 세그 번호)
+    _cur_seg = "intro"  # 지금 그리고 있는 구간
+    _photo_n = 0        # 사진 구역 일련번호(같은 사진을 두 번 써도 이름이 안 겹치게)
+
+    # --- 전 구간 보호영역(2026-07-30 4편 이월 과업 ③) --------------------------
+    #
+    # 문제: 3편까지 reserve_cta() 가 아웃트로에만 있어 **애니메이션 0~140 구간은 등록
+    # 구역 0개**였다. 구역이 없으면 "침범 0건"은 아무것도 검사하지 않고 참이 된다
+    # (공허한 참). refs/publish-reviews.md 3편 본편 행 근거 ⑧.
+    #
+    # 조치: 장면 시작 시 상시 구역 2개(자막 대역·하단 UI 대역)를 깔고, 사진이 만들어질
+    # 때마다 그 사진을 따라다니는 구역을 자동 등록한다. **전부 enforce=False(감사 전용)**
+    # — 배치 계산에 끼어들면 기존 편(01·02·03)의 화면이 달라진다. 감사는 새로 보되
+    # 그림은 1픽셀도 건드리지 않는다는 것이 이 설계의 핵심 제약이다.
+    #
+    # 좌표 근거(프레임 14.222 × 8.0, 1080p 기준 1px ≈ 0.0074 월드):
+    #  · 자막: sub() 이 fs30 텍스트를 to_edge(DOWN, buff=0.32) 에 놓고 폭 상한 12.8
+    #          → 글자가 차지하는 칸은 대략 y -3.68~-3.20, x ±6.4
+    #  · 하단 UI: 유튜브 플레이어 진행바·시간 표시가 덮는 최하단 띠(화면 높이의 약 5%)
+    #          → y -4.0~-3.60 전폭. (플랫폼 오버레이라 화면 밖 요인 — 추정치로 표기)
+    #
+    # 왜 '자동 등록 구역'은 4편부터만 차단인가 — **실측 결과**다(2026-07-30).
+    # 3편에 자동 구역을 깔고 --layout-audit 을 돌리니 23건이 걸렸는데, 뜯어보니
+    # 20건이 이 시리즈의 확립된 화면 문법이었다: 사진 위에 일부러 얹는 도장·라벨
+    # (「무료 — 영원히」 3.00×1.44, 「각색 아님」 4.45×1.30 …)과 하단 캡션 칩.
+    # 문법 자체를 결함으로 세면 경보가 무뎌지고(경보 피로), 이미 발행된 3편을
+    # 소급 재설계하라는 요구가 된다(사용자 결정 "1~3편 소급 없음").
+    # 그래서 **1~3편은 권고(경고)로 보고만 하고, 4편부터 차단**으로 올린다.
+    # 4편 저자는 의도한 겹침을 claim_all_photos()/claim_bottom() 으로 신고하면 된다
+    # — "의도"를 말로 남기게 만드는 것이 이 규칙의 목적이다. (BGM 4편 필수와 같은 방식)
+    ZONE_STRICT_FROM_EP = 4
+    SUB_BAND = "자막 대역"
+    UI_BAND = "하단 UI·로고 대역"
+    PHOTO_ZONE_PREFIX = "사진/스크린샷"
+
+    @staticmethod
+    def _auto_zone_blocks():
+        """자동 등록 구역의 침범을 '차단(FAIL)'으로 셀지 '권고(WARN)'로 셀지."""
+        try:
+            epn = int(re.sub(r"\D", "", EP) or 0)
+        except ValueError:
+            epn = 0
+        return epn >= EpisodeBase.ZONE_STRICT_FROM_EP
+
+    def reserve_standing_zones(self):
+        """장면 전 구간에 깔리는 상시 보호영역. 인트로 첫 컷부터 살아 있다."""
+        self.reserve_zone(self.UI_BAND, (-config.frame_width / 2, config.frame_width / 2,
+                                         -config.frame_height / 2, -3.60),
+                          pad=0.0, kind="block", enforce=False)
+        self.reserve_zone(self.SUB_BAND, (-6.4, 6.4, -3.60, -3.10),
+                          pad=0.0, kind="block", enforce=False)
+
+    def claim_bottom(self, *mobs):
+        """하단 두 띠의 '정식 거주자'로 신고한다 — © 배지·CTA 버튼처럼 거기 있는 게 설계인 것.
+
+        쉬운 말: "이 자리는 원래 얘 자리예요"라고 검사관 명부에 올리는 것.
+        신고 안 된 요소가 그 띠에 들어가면 감사가 적발한다(자막이 가려지는 자리이므로).
+        """
+        for nm in (self.UI_BAND, self.SUB_BAND):
+            self.claim_zone(nm, *mobs)
+        return mobs[0] if mobs else None
 
     def _describe(self, m):
         txts = [s.text for s in m.get_family() if isinstance(s, Text)]
@@ -401,18 +482,32 @@ class EpisodeBase(Scene):
         return (m.get_left()[0] - pad, m.get_right()[0] + pad,
                 m.get_bottom()[1] - pad, m.get_top()[1] + pad)
 
-    def reserve_zone(self, name, m, pad=None, owners=()):
+    def reserve_zone(self, name, m, pad=None, owners=(), kind="block",
+                     enforce=True, track=None):
         """침범 금지 구역(보호 영역)을 등록한다.
 
         쉬운 말: "여기는 나중에 구독 버튼이 앉을 자리니 비워둬"라고 미리 금줄을 치는 것.
         아직 화면에 없는 요소의 자리도 예약할 수 있다 — 아웃트로는 예고 부제(먼저)와
         CTA 버튼(나중)이 다른 컷에서 생기므로, 자리 예약 없이는 저자가 겹침을 볼 수 없다.
+
+        kind    "block" = 조금이라도 겹치면 침범 / "edge" = **테두리를 걸칠 때만** 침범.
+                'edge' 는 사진·스크린샷용이다: 사진 위에 일부러 올리는 도장·라벨은
+                정상 연출이고, 사진 밖에 있는 것도 정상이다. 결함은 그 중간 —
+                "반은 사진 안, 반은 사진 밖"으로 테두리를 물고 있는 상태다
+                (3편 seg10 배지가 스크린샷 테두리를 문 유형).
+        enforce 배치 계산(avoid_zones·free_x_band)이 이 구역을 피할지 여부.
+                **False = 감사 전용**. 자동 등록 구역은 전부 False 다 — 등록만으로
+                기존 편(01·02·03)의 화면이 1픽셀이라도 달라지면 안 되기 때문이다
+                (배치 계산에 새 장애물이 끼면 요소가 밀려 그림이 바뀐다).
+        track   이 mobject 를 따라다니는 구역. 켄 번즈로 사진이 커지고 밀려도 금줄이
+                같이 움직이고, 그 mobject 가 무대에서 내려가면 구역도 잠든다.
         """
         if self._zones is None:
             self._zones = {}
         pad = self.LAYOUT_MARGIN if pad is None else pad
         box = self.bbox(m) if hasattr(m, "get_left") else tuple(m)
-        self._zones[name] = {"box": box, "pad": pad, "owners": set()}
+        self._zones[name] = {"box": box, "pad": pad, "owners": set(),
+                             "kind": kind, "enforce": enforce, "track": track}
         if owners:
             self.claim_zone(name, *owners)
         return box
@@ -426,10 +521,35 @@ class EpisodeBase(Scene):
             z["owners"].add(id(o))
             z["owners"].update(id(c) for c in o.get_family())
 
+    def claim_all_photos(self, *mobs, why=""):
+        """사진 위에 **일부러** 올리는 요소(도장·라벨)를 '정상 연출'로 신고한다.
+
+        쉬운 말: "이건 사진에 겹쳐 찍는 게 의도"라고 검사관에게 미리 말해 두는 것.
+        신고 없이 사진 테두리를 물면 감사가 결함으로 적발한다(그게 목적이다).
+        """
+        for nm, z in (self._zones or {}).items():
+            if z["kind"] == "edge" and nm.startswith(self.PHOTO_ZONE_PREFIX):
+                self.claim_zone(nm, *mobs)
+        return mobs[0] if mobs else None
+
     def _obstacles(self, exclude=()):
-        boxes = [(nm, z["box"], z["pad"]) for nm, z in (self._zones or {}).items()]
+        # enforce=False 구역(자동 등록분)은 배치 계산에서 제외한다 — 감사에만 쓴다.
+        boxes = [(nm, self._zone_box(z), z["pad"])
+                 for nm, z in (self._zones or {}).items() if z.get("enforce", True)]
         boxes += [(self._describe(m), self.bbox(m), self.LAYOUT_MARGIN) for m in exclude]
         return boxes
+
+    @staticmethod
+    def _zone_box(z):
+        """구역의 지금 위치 — track 이 있으면 그 mobject 를 다시 재고, 없으면 고정 좌표."""
+        tr = z.get("track")
+        if tr is not None:
+            try:
+                return (tr.get_left()[0], tr.get_right()[0],
+                        tr.get_bottom()[1], tr.get_top()[1])
+            except Exception:  # noqa: BLE001
+                return z["box"]
+        return z["box"]
 
     def free_x_band(self, y_lo, y_hi, anchor=0.0, exclude=(), pad=None):
         """세로 [y_lo, y_hi] 구간에서 보호 영역·지정 요소를 피해 쓸 수 있는 가로 구간.
@@ -466,15 +586,15 @@ class EpisodeBase(Scene):
         for _ in range(rounds):
             worst = None
             for nm, z in (self._zones or {}).items():
-                if id(m) in z["owners"]:
-                    continue
-                ov = rect_overlap(self.bbox(m, pad * 0.5), z["box"])
+                if id(m) in z["owners"] or not z.get("enforce", True):
+                    continue   # 감사 전용 구역은 배치를 건드리지 않는다(기존 편 화면 불변)
+                ov = rect_overlap(self.bbox(m, pad * 0.5), self._zone_box(z))
                 if ov and (worst is None or min(ov) > min(worst[1])):
                     worst = (nm, ov, z)
             if worst is None:
                 break
             _nm, (ox, oy), z = worst
-            zl, zr, zb, zt = z["box"]
+            zl, zr, zb, zt = self._zone_box(z)
             l, r, b, t = self.bbox(m)
             band_l, band_r, band_w = self.free_x_band(b, t, anchor=(l + r) / 2, pad=pad)
             if allow_shrink and (r - l) > band_w > 0.8:
@@ -538,11 +658,38 @@ class EpisodeBase(Scene):
                 out.append((n["text"], shown, n["need"], "지속 미달"))
         return out
 
+    @staticmethod
+    def _contains(outer, inner, eps=0.01):
+        """outer 상자가 inner 상자를 통째로 품고 있나."""
+        return (outer[0] - eps <= inner[0] and inner[1] <= outer[1] + eps
+                and outer[2] - eps <= inner[2] and inner[3] <= outer[3] + eps)
+
+    def _live_zones(self, live):
+        """지금 판정 대상인 구역만 골라 (이름, 상자, 구역) 로 돌려준다.
+
+        track 이 달린 구역은 그 mobject 가 무대에 없으면 잠든다 — 사진이 사라진 뒤에도
+        금줄이 남아 있으면 뒤 컷의 멀쩡한 배치를 결함으로 오보한다.
+        """
+        out = []
+        for nm, z in (self._zones or {}).items():
+            tr = z.get("track")
+            if tr is not None and id(tr) not in live:
+                continue
+            out.append((nm, self._zone_box(z), z))
+        return out
+
     def audit_layout(self):
         """지금 무대에 올라 있는 모든 요소를 상대로 두 불변식을 기계 판정한다."""
         if self._overflow is None:
             self._overflow, self._intrusion, self._crowding = {}, {}, {}
-        self._track_legal(self._live_ids())
+            self._zones_seen, self._seg_covered, self._advice = set(), set(), {}
+        live = self._live_ids()
+        self._track_legal(live)
+        zones = self._live_zones(live)
+        for nm, _box, _z in zones:
+            self._zones_seen.add(nm)
+        if zones:
+            self._seg_covered.add(self._cur_seg)
         hw, hh = config.frame_width / 2, config.frame_height / 2
         for m in self.mobjects:
             if m is self.subtitle:
@@ -557,21 +704,45 @@ class EpisodeBase(Scene):
                 k = self._describe(m)
                 p = self._overflow.get(k, (0.0, 0.0))
                 self._overflow[k] = (max(p[0], ox), max(p[1], oy))
-            for nm, z in (self._zones or {}).items():
+            for nm, zbox, z in zones:
                 if id(m) in z["owners"]:
                     continue
-                hard = rect_overlap((l, r, b, t), z["box"])
+                hard = rect_overlap((l, r, b, t), zbox)
+                if hard and z.get("kind") == "edge":
+                    # 사진·스크린샷은 '테두리를 무는 것'만 결함이다. 완전히 안(의도한
+                    # 겹쳐 찍기)이거나 완전히 바깥(정상)이면 넘어간다.
+                    if self._contains(zbox, (l, r, b, t)) or \
+                            self._contains((l, r, b, t), zbox):
+                        continue
                 if hard:
+                    # 자동 등록 구역(상시 띠·사진)은 1~3편에서 '권고', 4편부터 '차단'.
+                    # 두 장부를 분리해 두어야 경보가 무뎌지지 않는다.
+                    auto = not z.get("enforce", True)
+                    bucket = (self._intrusion
+                              if (not auto or self._auto_zone_blocks())
+                              else self._advice)
                     k = f"{self._describe(m)} ↔ {nm}"
-                    p = self._intrusion.get(k, (0.0, 0.0))
-                    self._intrusion[k] = (max(p[0], hard[0]), max(p[1], hard[1]))
+                    p = bucket.get(k, (0.0, 0.0))
+                    bucket[k] = (max(p[0], hard[0]), max(p[1], hard[1]))
                     continue
-                zl, zr, zb, zt = z["box"]
+                if z.get("kind") == "edge":
+                    continue          # 사진 바깥의 '근접'은 경고 대상이 아니다
+                zl, zr, zb, zt = zbox
                 pz = (zl - z["pad"], zr + z["pad"], zb - z["pad"], zt + z["pad"])
                 soft = rect_overlap((l, r, b, t), pz)
                 if soft:
                     k = f"{self._describe(m)} ↔ {nm}"
                     self._crowding[k] = max(self._crowding.get(k, 0.0), min(soft))
+
+    def zone_coverage(self):
+        """(구역이 하나라도 살아 있던 구간 수, 전체 구간 수).
+
+        '등록 구역 N개'만으로는 어디를 봤는지 알 수 없다 — 3편은 3개였지만 전부
+        아웃트로에 몰려 있어 애니메이션 0~140 구간은 무방비였다(2차 감사 지적).
+        이 값이 전 구간을 덮어야 "전 구간 등록"이라 말할 수 있다.
+        """
+        total = len(TIMED) + 1          # 인트로 + 세그먼트들
+        return len(self._seg_covered or set()), total
 
     def report_layout(self):
         """[audit] 줄 출력 — verify_output_spec.py 가 이 줄을 읽어 PASS/FAIL을 판정한다.
@@ -583,10 +754,29 @@ class EpisodeBase(Scene):
         print(f"[audit] {name}: 프레임 이탈 {len(ov)}건")
         for k, (ox, oy) in sorted(ov.items(), key=lambda x: -max(x[1])):
             print(f"    - 이탈 {k}: 가로 +{ox:.2f} / 세로 +{oy:.2f}")
+        # '등록 구역'은 **실제로 살아 있던 구역 수**를 센다 — 등록만 해두고 한 번도
+        # 판정에 쓰이지 않은 구역을 세면 커버리지를 부풀린다(공허한 참의 변종).
+        seen = self._zones_seen or set()
+        blocking = sum(1 for nm in seen
+                       if (self._zones or {}).get(nm, {}).get("enforce", True))
+        cov, tot = self.zone_coverage()
+        strict = "차단" if self._auto_zone_blocks() else "권고"
         print(f"[audit] {name}: 보호영역 침범 {len(it)}건 "
-              f"(등록 구역 {len(self._zones or {})}개)")
+              f"(등록 구역 {len(seen)}개[명시 {blocking}·자동 {len(seen) - blocking}"
+              f"={strict}], 구간 커버리지 {cov}/{tot})")
         for k, (ox, oy) in sorted(it.items(), key=lambda x: -min(x[1])):
             print(f"    - 침범 {k}: 겹침 가로 {ox:.2f} / 세로 {oy:.2f}")
+        if cov < tot:
+            missing = [s for s in (["intro"] + list(range(len(TIMED))))
+                       if s not in (self._seg_covered or set())]
+            print(f"    - 구역 미등록 구간 {len(missing)}개: {missing}")
+        # 권고 장부 — 1~3편의 자동 구역 위반. 차단하지 않지만 **반드시 보이게** 남긴다
+        # (안 보이면 없는 것과 같다 — 이번 과업의 출발점이 바로 그 교훈이다).
+        ad = self._advice or {}
+        print(f"[audit] {name}: 표시영역 권고 위반 {len(ad)}건 "
+              f"({EpisodeBase.ZONE_STRICT_FROM_EP}편부터 차단)")
+        for k, (ox, oy) in sorted(ad.items(), key=lambda x: -min(x[1])):
+            print(f"    - 권고 {k}: 겹침 가로 {ox:.2f} / 세로 {oy:.2f}")
         if cr:
             print(f"[audit] {name}: 여유 침범(경고) {len(cr)}건 — 겹치진 않으나 "
                   f"최소 여유 {self.LAYOUT_MARGIN} 미달")
@@ -667,6 +857,10 @@ class EpisodeBase(Scene):
                 self.claim_zone(nm, *owners)
             else:
                 self.reserve_zone(nm, owners[0], owners=owners)
+        # CTA 버튼·© 배지는 하단 띠의 '정식 거주자'다(v2 확정 문법). 신고해 두지 않으면
+        # 상시 구역(자막·하단 UI)이 이들을 침범으로 오보한다 — 감사 장부만 바뀌고
+        # 화면은 그대로다.
+        self.claim_bottom(grp, cc, *parts)
         t1 = max(0.4, min(0.9, d * 0.35))
         self.play(*[FadeIn(p, scale=1.5 if i == 0 else 1.3) for i, p in enumerate(parts)],
                   run_time=t1)
@@ -710,15 +904,32 @@ class EpisodeBase(Scene):
 
     # --- 실사 사료 도우미 (하이브리드 v3) ---
     def photo(self, fname, height=5.4, pos=ORIGIN, framed=True):
-        """흰 테두리 액자에 담긴 실사 사진. Group 반환(사진, [테두리])."""
+        """흰 테두리 액자에 담긴 실사 사진. Group 반환(사진, [테두리]).
+
+        만들어지는 즉시 '테두리를 물면 안 되는 구역'으로 자동 등록된다(과업 ③).
+        구역은 사진을 따라다니므로 켄 번즈로 커지고 밀려도 금줄이 같이 움직인다.
+        """
         img = ImageMobject(os.path.join(ASSETS, fname))
         img.height = height
         img.move_to(pos)
-        if framed:
-            border = Rectangle(width=img.width + 0.1, height=img.height + 0.1)
-            border.set_stroke(INK, 4).set_fill(None, 0).move_to(img)  # 흰 배경에서도 보이는 잉크색 액자
-            return Group(img, border)
-        return Group(img)
+        grp = Group(img, self._photo_border(img)) if framed else Group(img)
+        self._register_photo_zone(grp, fname)
+        return grp
+
+    @staticmethod
+    def _photo_border(img):
+        border = Rectangle(width=img.width + 0.1, height=img.height + 0.1)
+        # 흰 배경에서도 보이는 잉크색 액자
+        border.set_stroke(INK, 4).set_fill(None, 0).move_to(img)
+        return border
+
+    def _register_photo_zone(self, grp, label):
+        """사진 1장 = 보호영역 1개(kind='edge'). 무대에 오르는 동안에만 살아 있다."""
+        type(self)._photo_n += 1
+        nm = f"{self.PHOTO_ZONE_PREFIX} {type(self)._photo_n}: {label}"
+        self.reserve_zone(nm, grp, pad=0.0, owners=[grp], kind="edge",
+                          enforce=False, track=grp)
+        return nm
 
     def fit_frame(self, m, margin=0.15):
         """프레임(화면) 밖으로 삐져나간 요소를 안쪽으로 밀어 넣는다 — 본편 프레임 이탈 방어.
@@ -780,6 +991,7 @@ class Episode01(EpisodeBase):
         sub = ktext("핵전쟁이 만든 인터넷의 시작", fs=40, color=GRAY).next_to(title, DOWN, buff=0.5)
         num = chip("#01", BLUE, 30).to_corner(UL, buff=0.6)
         cc = Text("© nous-zero", font=KFONT, font_size=22, color=LGRAY).to_corner(DR, buff=0.45)
+        self.claim_bottom(cc)   # 하단 띠의 정식 거주자 신고(감사 장부만 변경 — 화면 불변)
         self.play(FadeIn(title, scale=1.15), FadeIn(num), run_time=0.9)
         self.play(FadeIn(sub, shift=UP * 0.2), FadeIn(cc), run_time=0.7)
         self.wait(INTRO_D - 0.9 - 0.7 - 0.6)
@@ -1337,6 +1549,7 @@ class Episode02(EpisodeBase):
         sub = ktext("인터넷 전체가 하루 만에 언어를 갈아탄 날", fs=40, color=GRAY).next_to(title, DOWN, buff=0.5)
         num = chip("#02", BLUE, 30).to_corner(UL, buff=0.6)
         cc = Text("© nous-zero", font=KFONT, font_size=22, color=LGRAY).to_corner(DR, buff=0.45)
+        self.claim_bottom(cc)   # 하단 띠의 정식 거주자 신고(감사 장부만 변경 — 화면 불변)
         self.play(FadeIn(title, scale=1.15), FadeIn(num), run_time=0.9)
         self.play(FadeIn(sub, shift=UP * 0.2), FadeIn(cc), run_time=0.7)
         self.wait(INTRO_D - 0.9 - 0.7 - 0.6)
@@ -1954,6 +2167,7 @@ class Episode03(EpisodeBase):
         sub = ktext("모호하지만 흥미로움 — 웹의 탄생", fs=40, color=GRAY).next_to(title, DOWN, buff=0.5)
         num = chip("#03", BLUE, 30).to_corner(UL, buff=0.6)
         cc = Text("© nous-zero", font=KFONT, font_size=22, color=LGRAY).to_corner(DR, buff=0.45)
+        self.claim_bottom(cc)   # 하단 띠의 정식 거주자 신고(감사 장부만 변경 — 화면 불변)
         self.play(FadeIn(title, scale=1.15), FadeIn(num), run_time=0.9)
         self.play(FadeIn(sub, shift=UP * 0.2), FadeIn(cc), run_time=0.7)
         self.wait(INTRO_D - 0.9 - 0.7 - 0.6)
@@ -2420,7 +2634,9 @@ class Episode03(EpisodeBase):
             self.ken_burns(ph, d - t1 - 0.3, zoom=1.06)
 
         def a1(d):
-            cap = chip("최초의 웹사이트 — '웹이란 무엇인가' 안내문 (재현 화면)", GRAY, 20)
+            # 33자 = 상한(20자) 초과 → LEGAL_CAPTION_LEGACY 등록분(3편 발행본 소급 금지).
+            # 4편부터는 같은 문구를 쓰면 빌드가 죽는다.
+            cap = legal_chip("최초의 웹사이트 — '웹이란 무엇인가' 안내문 (재현 화면)", GRAY, 20)
             cap.next_to(self.st["pub"], DOWN, buff=0.25)
             t1 = max(0.3, min(0.6, d * 0.2))
             self.play(FadeIn(cap, shift=UP * 0.15), run_time=t1)
@@ -2608,7 +2824,7 @@ class Episode03(EpisodeBase):
             # 적발해서 나온 값이다.
             self.reserve_cta()
             ph, _ = self.ep_photo("next", height=2.3, pos=LEFT * 3.9 + DOWN * 1.05)
-            cap = chip("최초의 웹사이트 (재현 화면)", GRAY, 20)
+            cap = legal_chip("최초의 웹사이트 (재현 화면)", GRAY, 20)
             cap.next_to(ph, DOWN, buff=0.22)
             shot = Group(ph, cap)          # 사진과 표기는 한 덩어리로 뜨고 진다
             # 예고컷도 보호 영역으로 등록 — 예고 문구가 사진 위로 올라타지 못하게
@@ -2832,7 +3048,27 @@ def main():
     scene = episodes[EP]()
     scene.render()
     if LAYOUT_AUDIT:
+        # 값싼 사전 검사(몇 분)에서는 **종료 코드로** 결함을 알린다 — 조용히 0을 돌려주면
+        # 자동화(훅·CI·총감독 루프)가 통과로 읽는다. 70분 렌더는 이 관문을 먼저 통과한 뒤에.
+        bad = []
+        if scene._overflow:
+            bad.append(f"프레임 이탈 {len(scene._overflow)}건")
+        if scene._intrusion:
+            bad.append(f"보호영역 침범 {len(scene._intrusion)}건")
+        short = scene.legal_shortfalls()
+        if short:
+            bad.append(f"법무 표기 지속 미달 {len(short)}건")
+        cov, tot = scene.zone_coverage()
+        if cov < tot:
+            bad.append(f"보호영역 미등록 구간 {tot - cov}개")
+        if scene._advice:
+            print(f"[v2] 권고 위반 {len(scene._advice)}건 — 차단은 아니지만 "
+                  f"{EpisodeBase.ZONE_STRICT_FROM_EP}편부터는 차단이다. 위 목록 확인.")
         print("[v2] 레이아웃 감사 종료 — 위 [audit] 줄이 판정 결과다(영상 미생성).")
+        if bad:
+            print("[v2] 감사 불합격: " + " · ".join(bad))
+            sys.exit(2)
+        print("[v2] 감사 합격 — 이탈·침범·표기 지속·구간 커버리지 전항 통과.")
         return
 
     if NO_MUX:
